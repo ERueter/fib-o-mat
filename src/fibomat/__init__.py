@@ -9,6 +9,6 @@ from fibomat.units import U_, Q_
 
 import fibomat.default_backends
 
-__version__ = "0.3.11"
+__version__ = "0.3.12"
 
 __all__ = ["__version__", "Sample", "Site", "Pattern", "Mill", "Vector", "U_", "Q_"]
