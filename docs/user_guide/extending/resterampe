@@ -1,0 +1,32 @@
+
+The export method takes a exporting class as parameter. Further, extra named arguments can are accepted which are directly passed to the __init__ method of the exporting class. The exporting method returns an instance of the exporting class. This can be used to save the data to a file for example (this only works, if the exorting class provides the functionality, of course) ::
+
+    sample = Sample()
+
+    # ...
+
+    # export the sample
+    exported = sample.export(MyExportingClass, extra_arg=1, other_arg="foo")
+
+    # the imaginary MyExportingClass class has a save method which writes all the data to a file
+    exported.save('filename.xyz')
+
+Internally, the following happens:
+
+    1. Loop over every site in the sample
+    2. Add every pattern to the exporting backend
+
+It depends on the backend, how different sites and patterns are handled.
+
+If a exporting backend does not support different sites, but multiple where added to the sample, the export_multi function can used to create an individual exporting class instance for every site. ::
+
+    sample = Sample()
+
+    # ...
+
+    exported_sites = sample.export_multi(MyExportingClass, ...)
+
+    for i, exported in enumerate(exported_sites):
+        exported.save(f'filename_{i}.xyz')
+
+All concepts introduced above are demonstrated in the next section for the SpotList backend.

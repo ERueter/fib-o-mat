@@ -1,0 +1,5 @@
+sphinx
+recommonmark
+pydata_sphinx_theme
+sphinxemoji
+bokeh
