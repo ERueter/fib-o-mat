@@ -1,11 +1,7 @@
 import inspect
 import itertools
-import json
 import pathlib
-import tempfile
-import webbrowser
-from os import write
-from typing import Any, Dict, List, Optional, TextIO, Union
+from typing import Any, Dict, List, Optional, Union
 
 import bokeh.models as bm
 import bokeh.plotting as bp
@@ -14,7 +10,8 @@ import numpy as np
 import PIL.Image
 from bokeh.util import compiler
 from bokeh.util.compiler import AttrDict, set_cache_hook
-from fibomat import layout, shapes, DimVector
+from fibomat import layout, shapes
+from fibomat.linalg.vectors import DimVector, DimVectorLike
 from fibomat.backend import BackendBase
 from fibomat.backend.backendbase import ShapeNotSupportedError, shape_type
 from fibomat.default_backends._bokeh_site import BokehSite, ShapeType
@@ -35,7 +32,6 @@ from fibomat.units import (
     scale_factor,
 )
 from fibomat.utils import PathLike
-import pathlib
 
 _orig_bundle_models = compiler._bundle_models
 
@@ -162,9 +158,11 @@ class BokehBackend(BokehBackendBase):
     The default backend for plotting projects, based on the bokeh library.
     All shapes defined in fibomat library are supported.
 
-    .. note:: :class:`~fibomat.shapes.arc.shapes.Arc` and :class:`~fibomat.shapes.curve.shapes.Curve` are rasterized during plotting
-              due to lack of supported of the HoverTool for this shapes in the bokeh library. The pitch can be defined
-              via the `rasterize_pitch` parameter.
+    .. note::
+        :class:`~fibomat.shapes.arc.shapes.Arc` and
+        :class:`~fibomat.shapes.curve.shapes.Curve` are rasterized during plotting
+        due to lack of supported of the HoverTool for this shapes in the bokeh library.
+        The pitch can be defined via the `rasterize_pitch` parameter.
     """
 
     name = "bokeh"
@@ -189,7 +187,9 @@ class BokehBackend(BokehBackendBase):
             unit (units.UnitType, optional): used unit for plotting, default to units.U_('µm')
             title (str, optional): title of plot, default to ''
             hide_sites (bool, optional): if true, sides' outlines are not shown, default to false
-            rasterize_pitch (units.QuantityType. optional): curve_tools.rasterize pitch for shapes.Arc, ... and shapes.Curve, default to units.Q_('0.01 µm')
+            rasterize_pitch (units.QuantityType. optional):
+                curve_tools.rasterize pitch for shapes.Arc, ... and shapes.Curve, default to
+                units.Q_('0.01 µm')
             fullscreen (bool, optional): if true, plot will be take the whole page, default to True
             cycle_colors (bool): if True, different sites get different colors.
             image_alpha (float): alpha value (transparency) of images, default to 0.75
@@ -484,9 +484,10 @@ class BokehBackend(BokehBackendBase):
             tools="pan,wheel_zoom,reset,save",
         )
 
+        # line_color=bc.groups.red.Crimson, line_width=3  # bpal.all_palettes['Colorblind'][4][3]
         fig.add_tools(
             MeasureTool(
-                measure_unit=f"{self._unit:~P}",  # line_color=bc.groups.red.Crimson, line_width=3  # bpal.all_palettes['Colorblind'][4][3]
+                measure_unit=f"{self._unit:~P}",
             )
         )
 
@@ -528,8 +529,10 @@ class BokehBackend(BokehBackendBase):
 
                 # center = image.center.vector_as(self._unit)
 
-                # input_offset_x = bm.Spinner(title="Image x", low=-100000, high=100000, step=0.01, value=center.x, width=80)
-                # input_offset_y = bm.Spinner(title="Image y", low=-100000, high=100000, step=0.01, value=center.y, width=80)
+                # input_offset_x = bm.Spinner(
+                #   title="Image x", low=-100000, high=100000, step=0.01, value=center.x, width=80)
+                # input_offset_y = bm.Spinner(
+                #   title="Image y", low=-100000, high=100000, step=0.01, value=center.y, width=80)
 
                 image_center = image.center.vector_as(self._unit)
                 image_scale = scale_factor(self._unit, image.unit)
