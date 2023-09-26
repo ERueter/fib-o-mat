@@ -2,6 +2,7 @@ python_sources = [
     '__init__.py',
     '_bokeh_site.py',
     'bitmap_backend.py',
+    'bokeh-measuretool.min.js',
     'bokeh_backend.py',
     'donothing_backend.py',
     'measuretool.py',

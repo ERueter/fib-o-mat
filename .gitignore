@@ -64,5 +64,4 @@ bokeh-measuretool/dist/*
 bokeh-measuretool/node_modules/*
 bokeh-measuretool/package-lock.json
 bokeh-measuretool/.bokeh
-*min.js
 
