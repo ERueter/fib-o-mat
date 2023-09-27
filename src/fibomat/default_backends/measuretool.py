@@ -8,7 +8,7 @@ class MeasureTool(Tool):
     """
 
     # https://github.com/bokeh/bokeh/issues/9412
-    __view_module__ = "bokeh-measuretool"
+    # __view_module__ = "bokeh-measuretool"
 
     # __javascript__ = "bokeh-measuretool.js"
 

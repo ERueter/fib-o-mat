@@ -485,11 +485,12 @@ class BokehBackend(BokehBackendBase):
         )
 
         # line_color=bc.groups.red.Crimson, line_width=3  # bpal.all_palettes['Colorblind'][4][3]
-        fig.add_tools(
-            MeasureTool(
-                measure_unit=f"{self._unit:~P}",
-            )
-        )
+
+        # fig.add_tools(
+        #     MeasureTool(
+        #         measure_unit=f"{self._unit:~P}",
+        #     )
+        # )
 
         fig.add_tools(bm.BoxZoomTool(match_aspect=True))
 
