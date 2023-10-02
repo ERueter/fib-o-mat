@@ -23,5 +23,4 @@ py.extension_module(
     install: true,
     subdir: 'fibomat',
     include_directories: includes,
-    link_args: link_args
 )
