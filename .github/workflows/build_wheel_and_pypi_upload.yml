@@ -1,4 +1,4 @@
-name: Build wheels and sdist
+name: Build and upload
 
 on:
   workflow_dispatch:
@@ -41,3 +41,18 @@ jobs:
       with:
         path: dist/*.tar.gz
 
+  upload_all:
+    needs: [build_wheels, make_sdist]
+    runs-on: ubuntu-latest
+    # if: github.event_name == 'release' && github.event.action == 'published'
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: artifact
+          path: dist
+
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          # repository-url: https://test.pypi.org/legacy/
+          # password: ${{ secrets.PYPI_TEST_PASSWORD  }}
+          password: ${{ secrets.PYPI_PASSWORD  }}
