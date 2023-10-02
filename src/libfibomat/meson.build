@@ -7,10 +7,22 @@ srcs = [
     'libfibomat.cpp',
 ]
 
+compiler = meson.get_compiler('cpp')
+
+if host_machine.system() == 'windows' and compiler.get_id() == 'gcc'
+    # this statically links libgcc and listdc++ to the pyd file. It is otherwise not loadable
+    # without the specific libgcc dll and libstdc++ files installed on the target machine.
+    # https://github.com/pybind/pybind11/issues/2010#issuecomment-1288514493
+    link_args = ['-static-libgcc', '-static-libstdc++']
+else
+    link_args = []
+endif
+
 py.extension_module(
     '_libfibomat',
     srcs,
     install: true,
     subdir: 'fibomat',
     include_directories: includes,
+    link_args: link_args
 )
