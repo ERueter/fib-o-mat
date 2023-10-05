@@ -6,6 +6,7 @@ python_sources = [
     'bokeh_backend.py',
     'donothing_backend.py',
     'measuretool.py',
+    'patterning_duration_calculator.py',
     'spotlist_backend.py',
     'svg_backend.py'
 ]
@@ -14,5 +15,3 @@ py.install_sources(
     python_sources,
     subdir: 'fibomat/default_backends'
 )
-
-
