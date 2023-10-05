@@ -15,3 +15,6 @@ py.install_sources(
     python_sources,
     subdir: 'fibomat/default_backends'
 )
+
+subdir('npve')
+subdir('smart_fib')
