@@ -9,14 +9,26 @@ The second one, the spotlist backend, rasterizes all shapes and creates a list o
 from fibomat.backend import registry
 
 from fibomat.default_backends.bokeh_backend import BokehBackend, StubRasterStyle
+
 # from fibomat.default_backends.donothing_backend import DoNothingBackend
 from fibomat.default_backends.spotlist_backend import SpotListBackend
 from fibomat.default_backends.svg_backend import SVGBackend
 from fibomat.default_backends.bitmap_backend import BitmapBackend
+from fibomat.default_backends.patterning_duration_calculator import (
+    PatterningDurationCalculator,
+)
 
 
 registry.register(BokehBackend, BokehBackend.name)
 registry.register(SpotListBackend, SpotListBackend.name)
+registry.register(PatterningDurationCalculator, PatterningDurationCalculator.name)
+registry.register(SVGBackend, SVGBackend.name)
 # registry.register(DoNothingBackend, DoNothingBackend.name)
 
-__all__ = ['BokehBackend', 'StubRasterStyle', 'SpotListBackend']
+__all__ = [
+    "BokehBackend",
+    "StubRasterStyle",
+    "SpotListBackend",
+    "BitmapBackend",
+    "PatterningDurationCalculator",
+]
