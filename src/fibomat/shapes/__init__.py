@@ -14,9 +14,26 @@ from fibomat.shapes.rasterizedpoints import RasterizedPoints
 from fibomat.shapes.hollow_arc_spline import HollowArcSpline
 from fibomat.shapes.biarc import Biarc
 from fibomat.shapes.text import Text
+from fibomat.shapes.ring import Ring
 
 
 __all__ = [
-    'Shape', 'ArcSpline', 'Line', 'Polyline', 'Polygon', 'Spot', 'Rect', 'Circle', 'Ellipse', 'ParametricCurve', 'Arc',
-    'RasterizedPoints', 'HollowArcSpline', 'DimShape', 'ArcSplineCompatible', 'Biarc', 'Text'
+    "Shape",
+    "ArcSpline",
+    "Line",
+    "Polyline",
+    "Polygon",
+    "Spot",
+    "Rect",
+    "Circle",
+    "Ellipse",
+    "ParametricCurve",
+    "Arc",
+    "RasterizedPoints",
+    "HollowArcSpline",
+    "DimShape",
+    "ArcSplineCompatible",
+    "Biarc",
+    "Text",
+    "Ring",
 ]

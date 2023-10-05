@@ -34,6 +34,7 @@ def shape_type(type_: Type[shapes.Shape]) -> Callable:
     Returns:
         Callable: Decorator
     """
+
     def decorator(func):
         # pylint: disable=protected-access
         func._shape_type = type_
@@ -86,7 +87,11 @@ class BackendBase(metaclass=BackendBaseMeta):
                         :meth:`fibomat.project.Project.export`
         """
         if kwargs:
-            print('warning: unhandled kwargs in exporting backend ("{}")'.format(', '.join(kwargs.keys())))
+            print(
+                'warning: unhandled kwargs in exporting backend ("{}")'.format(
+                    ", ".join(kwargs.keys())
+                )
+            )
 
         super().__init__()
 
@@ -109,7 +114,9 @@ class BackendBase(metaclass=BackendBaseMeta):
 
         def dispatch(extracted_ptn):
             try:
-                method = self.implemented_shape_methods[type(extracted_ptn.dim_shape.shape)]
+                method = self.implemented_shape_methods[
+                    type(extracted_ptn.dim_shape.shape)
+                ]
                 return method(self, extracted_ptn)
             except KeyError:
                 # try bases classes
@@ -125,10 +132,24 @@ class BackendBase(metaclass=BackendBaseMeta):
             # ptn.dim_shape[0]: layout.LayoutBase
             for extracted_shape in ptn.dim_shape.layout_elements():
                 if isinstance(extracted_shape, layout.LayoutBase):
-                    self.process_pattern(Pattern(extracted_shape, ptn.mill, ptn.raster_style, **ptn.kwargs, description=ptn.description))
+                    self.process_pattern(
+                        Pattern(
+                            extracted_shape,
+                            ptn.mill,
+                            ptn.raster_style,
+                            **ptn.kwargs,
+                            description=ptn.description,
+                        )
+                    )
                 else:
                     dispatch(
-                        Pattern(extracted_shape, ptn.mill, ptn.raster_style, **ptn.kwargs, description=ptn.description)
+                        Pattern(
+                            extracted_shape,
+                            ptn.mill,
+                            ptn.raster_style,
+                            **ptn.kwargs,
+                            description=ptn.description,
+                        )
                     )
         else:
             dispatch(ptn)
@@ -144,7 +165,7 @@ class BackendBase(metaclass=BackendBaseMeta):
         Returns:
             None
         """
-        raise ShapeNotSupportedError(f'Shape type = {ptn.dim_shape.shape.__class__}')
+        raise ShapeNotSupportedError(f"Shape type = {ptn.dim_shape.shape.__class__}")
 
     # @staticmethod
     # def _check_pattern_shape_type(expected_shape_type_: typing.Type[Shape], patter: Pattern):
@@ -253,10 +274,23 @@ class BackendBase(metaclass=BackendBaseMeta):
     @shape_type(shapes.Circle)
     def circle(self, ptn: Pattern[shapes.Circle]) -> None:
         """
-        Adds pattern with `Ellipse` as shape to the backend.
+        Adds pattern with `Circle` as shape to the backend.
 
         Args:
-            ptn (Pattern): pattern with `Ellipse` as shape
+            ptn (Pattern): pattern with `Circle` as shape
+
+        Returns:
+            None
+        """
+        raise NotImplementedError
+
+    @shape_type(shapes.Ring)
+    def circle(self, ptn: Pattern[shapes.Ring]) -> None:
+        """
+        Adds pattern with `Ring` as shape to the backend.
+
+        Args:
+            ptn (Pattern): pattern with `Ring` as shape
 
         Returns:
             None

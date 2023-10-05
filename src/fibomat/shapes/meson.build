@@ -14,6 +14,7 @@ python_sources = [
     'polyline.py',
     'rasterizedpoints.py',
     'rect.py',
+    'ring.py',
     'shape.py',
     'spot.py',
     'text.py'
