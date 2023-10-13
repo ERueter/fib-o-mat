@@ -4,7 +4,7 @@ requires = ['meson-python', 'bokeh>=3.1.1']  # , , 'node'
 
 [project]
 name = "fibomat"
-version = "0.3.13"
+version = "0.4.0"
 description = "fib-o-mat is a toolbox to generate patterns for focused ion beam instruments."
 requires-python = ">=3.9"
 authors = [{name = 'Victor Deinhart', email = 'victor.deinhart@helmholtz-berlin.de'}]
