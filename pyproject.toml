@@ -26,7 +26,8 @@ license = {text = 'GPLv3'}
 readme = "README.md"
 dependencies = [
     'numpy', 'scipy', 'sympy', 'bokeh>=3.1.1', 'pint', 'ezdxf', 'numba', 'vispy', 'pyqt5', 'splipy', 'frozenlist',
-    'pillow', 'svgwrite', 'pyhershey', 'jinja2', 'marshmallow', 'prettytable', 'xmltodict', 'colored'
+    'pillow', 'svgwrite', 'pyhershey', 'jinja2', 'marshmallow', 'prettytable', 'xmltodict', 'colored', 'svgelements',
+    'anytree'
 ]
 
 [project.urls]
