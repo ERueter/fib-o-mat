@@ -1,5 +1,11 @@
+import pathlib
+
 from bokeh.models import Tool
 from bokeh.core.properties import String, DashPattern, Color, Float
+from bokeh.util.compiler import FromFile
+
+
+here = pathlib.Path(__file__).parent.resolve()
 
 
 class MeasureTool(Tool):
@@ -10,7 +16,7 @@ class MeasureTool(Tool):
     # https://github.com/bokeh/bokeh/issues/9412
     # __view_module__ = "bokeh-measuretool"
 
-    # __javascript__ = "bokeh-measuretool.js"
+    __implementation__ = FromFile(str(here / "bokeh-measuretool.min.js"))
 
     measure_unit = String(default="", help="")
     line_dash = DashPattern(default="solid", help="")
