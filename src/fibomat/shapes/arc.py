@@ -484,7 +484,7 @@ class Arc(Shape, ArcSplineCompatible):  # pylint: disable=too-many-public-method
             r_vec = Vector(self._r, self._r)
             return BoundingBox(self.center-r_vec, self.center+r_vec)
 
-        points = [self._center, self.start, self.end]
+        points = [self.start, self.end]
 
         for axis_angle in [0., np.pi/2, np.pi, 3/2 * np.pi, 2*np.pi]:
             if self._sweep_dir:
