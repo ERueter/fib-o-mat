@@ -1,6 +1,6 @@
 name: Build wheels and sdist
 
-on:
+oon:
   workflow_dispatch:
   release:
     types:
@@ -13,16 +13,20 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-       os: [ubuntu-latest, windows-latest, macos-latest]
+       os: [ubuntu-latest, windows-latest, macos-13, macos-14]
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # fetch-depth: 0 
+          submodules: recursive
 
       - name: Build wheels
-        uses: pypa/cibuildwheel@v2.16.1
+        uses: pypa/cibuildwheel@v2.22.0
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
+          name: cibw-wheels-${{ matrix.os }}-${{ strategy.job-index }}
           path: wheelhouse/*.whl
 
   make_sdist:
@@ -31,13 +35,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
       with:
-        fetch-depth: 0 
-        submodules: true
+        # fetch-depth: 0 
+        submodules: recursive
 
     - name: Build SDist
       run: pipx run build --sdist
 
-    - uses: actions/upload-artifact@v3
+    - uses: actions/upload-artifact@v4
       with:
+        name: cibw-sdist
         path: dist/*.tar.gz
-
