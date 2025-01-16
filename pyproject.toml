@@ -1,46 +1,50 @@
 [build-system]
-build-backend = 'mesonpy'
-requires = ['meson-python', 'bokeh>=3.1.1']  # , , 'node'
+build-backend = "mesonpy"
+requires = ["meson-python", "bokeh>=3.1.1"]  # , , "node"
 
 [project]
 name = "fibomat"
 version = "0.4.0"
 description = "fib-o-mat is a toolbox to generate patterns for focused ion beam instruments."
 requires-python = ">=3.9"
-authors = [{name = 'Victor Deinhart', email = 'victor.deinhart@helmholtz-berlin.de'}]
-keywords = ['focused', 'ion beam', 'fib', 'pattern', 'patterning', 'beam path generation']
+authors = [{name = "Victor Deinhart", email = "victor.deinhart@helmholtz-berlin.de"}]
+keywords = ["focused ion beam", "fib", "pattern", "patterning", "beam path generation"]
 classifiers = [
-    'Development Status :: 3 - Alpha',
-    'Programming Language :: Python :: 3 :: Only',
-    'Programming Language :: Python :: 3.8',
-    'Programming Language :: Python :: 3.9',
-    'Programming Language :: Python :: 3.10',
-    'Programming Language :: Python :: 3.11',
-    'Programming Language :: C++',
-    'Topic :: Scientific/Engineering :: Physics',
-    'License :: OSI Approved :: GNU General Public License v3 (GPLv3)',
-    'Operating System :: POSIX',
-    'Operating System :: Microsoft :: Windows',
+    "Development Status :: 3 - Alpha",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: C++",
+    "Topic :: Scientific/Engineering :: Physics",
+    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+    "Operating System :: POSIX",
+    "Operating System :: Microsoft :: Windows",
 ]
-license = {text = 'GPLv3'}
+license = {text = "GPLv3"}
 readme = "README.md"
 dependencies = [
-    'numpy', 'scipy', 'sympy', 'bokeh>=3.1.1', 'pint', 'ezdxf', 'numba', 'vispy', 'pyqt5', 'splipy', 'frozenlist',
-    'pillow', 'svgwrite', 'pyhershey', 'jinja2', 'marshmallow', 'prettytable', 'xmltodict', 'colored', 'svgelements',
-    'anytree'
+    "numpy", "scipy", "sympy", "pint", "splipy", "frozenlist", "pyhershey", "jinja2", 
 ]
 
+
 [project.urls]
-Repository = 'https://gitlab.com/viggge/fib-o-mat'
+Repository = "https://github.com/fib-o-mat/fib-o-mat"
 Documentation =  "https://fib-o-mat.readthedocs.io/en/latest/"
 
 [project.gui-scripts]
 beam_simulation = "fibomat.beam_simulation:run"
 
 [project.optional-dependencies]
-docs = ['sphinx', 'recommonmark', 'pydata_sphinx_theme', 'sphinxemoji']
-testing = ['pytest', 'pytest-coverage', 'pytest-mock']
-dev = ['bump2version', 'twine']
+# TODO numba
+exporting = ["bokeh>=3.1.1", "svgwrite",  "marshmallow", "prettytable", "xmltodict", "colored", "pillow",]
+io = ["svgelements", "ezdxf"]
+gui = ["pyqt5", "vispy"]
+docs = ["setuptools", "sphinx", "recommonmark", "pydata_sphinx_theme", "sphinxemoji"]
+testing = ["pytest", "pytest-coverage", "pytest-mock"]
+dev = ["bump2version", "twine"]
 
 [tool.cibuildwheel.linux]
 manylinux-x86_64-image = "manylinux_2_28"
