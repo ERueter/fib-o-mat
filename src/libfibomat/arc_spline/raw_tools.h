@@ -114,9 +114,9 @@ namespace fibomat
 
         auto res_loop_set = cavc::ParallelOffsetIslands<double>().compute(loop_set, delta);
 
-        std::cout << "offset multi curve\n";
-        std::cout << "res_loop_set.cwLoops " << res_loop_set.cwLoops.size() << "\n";
-        std::cout << "res_loop_set.ccwLoops " << res_loop_set.ccwLoops.size() << "\n";
+        // std::cout << "offset multi curve\n";
+        // std::cout << "res_loop_set.cwLoops " << res_loop_set.cwLoops.size() << "\n";
+        // std::cout << "res_loop_set.ccwLoops " << res_loop_set.ccwLoops.size() << "\n";
 
         std::vector<cavc::Polyline<double>> res_islands(res_loop_set.cwLoops.size());
         std::transform(
