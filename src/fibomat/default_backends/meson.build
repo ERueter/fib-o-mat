@@ -18,3 +18,4 @@ py.install_sources(
 
 subdir('npve')
 subdir('smart_fib')
+subdir('fei')
