@@ -111,7 +111,7 @@ class HollowArcSpline(Shape):
 
     @property
     def holes(self) -> List[ArcSpline]:
-        return self._holes
+        return [*self._holes]
 
     def __repr__(self) -> str:
         return self.__class__.__name__
