@@ -22,9 +22,9 @@ documentation. The module reference is to be found [here](https://fib-o-mat.read
 Made with :black_heart: and :coffee: at HZB and FBH in Berlin.
 
 If you use this library in your work, please cite
-```
-Deinhart et al., ...
-```    
+
+Deinhart et al., Beilstein J. Nanotechnol. **2021**, 12, 304-318. [doi:10.3762/bjnano.12.25](https://www.beilstein-journals.org/bjnano/articles/12/25)
+
 
 Installation
 ============
@@ -33,6 +33,17 @@ Run in a terminal
 $ pip install fibomat
 ```  
 It is highly recommended to use virtual environments.
+
+There are several optional dependencies to install:
+
+- `exporting`: plotting and exporting patterns
+- `io`: loading SVG and DXF
+- `gui`: beam simulation gui
+
+E.g., install fib-o-mat alongside the `exporting` dependencies via
+```
+$ pip install fibomat[exporting]
+```  
 
 Example
 =======
