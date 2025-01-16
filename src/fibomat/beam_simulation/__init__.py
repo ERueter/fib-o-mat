@@ -4,10 +4,15 @@ import configparser
 
 import numpy as np
 
-from PyQt5 import QtWidgets
+try:
+    from PyQt5 import QtWidgets
+    from fibomat.beam_simulation.window import AnimationWindow
+except ModuleNotFoundError as error:
+    raise RuntimeError(
+        "You need to install the package with 'gui' as optional dependency to be able to use the beam-simulation tool."
+    ) from error
 
 from fibomat.linalg import BoundingBox
-from fibomat.beam_simulation.window import AnimationWindow
 
 
 def _load_and_prepare(file: str):

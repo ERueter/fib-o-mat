@@ -12,9 +12,14 @@ import itertools
 
 import numpy as np
 
-import svgelements
+try:
+    import svgelements
+except ModuleNotFoundError as error:
+    raise RuntimeError(
+        "You need to install the package with 'io' as optional dependency to be able to use the svg import."
+    ) from error
 
-import anytree
+# import anytree
 
 from fibomat.units import Q_, U_
 from fibomat.shapes import Shape, Rect, Circle, Polyline, Polygon, Polyline, Line, Ellipse

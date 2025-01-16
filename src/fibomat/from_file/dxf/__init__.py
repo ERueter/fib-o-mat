@@ -4,8 +4,13 @@ import math
 
 import numpy as np
 
-import ezdxf
-import ezdxf.entities
+try:
+    import ezdxf
+    import ezdxf.entities
+except ModuleNotFoundError as error:
+    raise RuntimeError(
+        "You need to install the package with 'io' as optional dependency to be able to use the dxf import."
+    ) from error
 
 from fibomat.shapes import Shape, Polyline, Polygon, Line, Spot, Circle, Ellipse, Rect
 from fibomat.utils import PathLike

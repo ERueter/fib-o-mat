@@ -13,6 +13,13 @@ from fibomat.units import Q_, UnitType, U_, scale_factor, QuantityType, LengthQu
 from fibomat.curve_tools import rasterize, smooth, deflate
 from fibomat.dimensioned_object import DimObjLike, DimObj
 
+try:
+    import numba
+except ModuleNotFoundError as error:
+    raise RuntimeError(
+        "You need to install 'numba' to be able to use the optimize package."
+    ) from error
+
 
 _FLUX_UNIT = U_('ions / nm**2 / µs')
 
@@ -142,8 +149,6 @@ def optimize_rasterized(dwell_points, length_unit: LengthUnit, beam: IonBeam, no
         hint = None
 
     return dwell_points, hint, flux_matrix
-
-import numba
 
 
 @numba.jit(nopython=True, fastmath=True)

@@ -1,14 +1,21 @@
 from typing import Optional, Dict
 import io
 
-import PIL.Image
 
 import numpy as np
 
-import svgwrite
-import svgwrite.container
-import svgwrite.shapes
-import svgwrite.extensions
+try:
+    import svgwrite
+    import svgwrite.container
+    import svgwrite.shapes
+    import svgwrite.extensions
+    
+    import PIL.Image
+except ModuleNotFoundError as error:
+    raise RuntimeError(
+        "You need to install the package with 'exporting' as optional dependency to be able to use the svg backend."
+    ) from error
+
 
 from fibomat.backend import BackendBase
 from fibomat.site import Site
