@@ -1,6 +1,6 @@
 name: Build wheels and sdist
 
-oon:
+on:
   workflow_dispatch:
   release:
     types:
