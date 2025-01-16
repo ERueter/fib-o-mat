@@ -25,6 +25,7 @@ __pycache__/*
 cmake-build-debug
 _skbuild
 tags
+*.code-workspace
 
 # Package files
 *.egg
