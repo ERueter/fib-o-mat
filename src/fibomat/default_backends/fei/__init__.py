@@ -73,11 +73,17 @@ def stream_file_impl(n_rep=1, margin=0.9, dac16bit=True, hfw_rounding=True, time
         width, height = fov.width, fov.height
         xy_aspect_ratio = x_res/y_res
         # Setting the horizontal field width (HFW) based on which is FOV aspect ratio
-        if width/height > xy_aspect_ratio:
+
+        if height != 0 and width/height > xy_aspect_ratio: # TODO check this whole part, for now just avoid width/0 (happens for single point)
             hfw = width / margin
         else:
+            print(margin)
             hfw = height * xy_aspect_ratio / margin
-        hfw = round_hfw(hfw)
+        if hfw > 0: #TODO check if this makes sense/understand what hfw does. For now just avoid log(0) this way
+            hfw = round_hfw(hfw)
+        if hfw == 0:
+            print("calculated horizontal field width to be 0. hfw was set to 1000")
+            hfw = 1000 # TODO fix this magic number
         shift = center - (hfw/2, hfw/xy_aspect_ratio/2)
         dwell_points[:, 0:2] = (dwell_points[:, 0:2]-shift)*x_res/hfw
         # Setting the dwell time to correct units
@@ -98,6 +104,7 @@ def stream_file_impl(n_rep=1, margin=0.9, dac16bit=True, hfw_rounding=True, time
 
             # second, write dwell point data
             # dwell_points has shape (N, 3) where N is the numbre of dwell points. Each row in the array contains
+            # TODO not compatible with implementation of dwell points. dwell points implement number of repetitions by just writing the pattern n_rep many times
             # (x, y, t_d) where x and y are the position of a spot and t_d the dwell time or dwell time multiplicand.
             # FEI Stream file is takes the dwell time column first, therefore it is reordered. All values in stream
             # file are given as integers.
