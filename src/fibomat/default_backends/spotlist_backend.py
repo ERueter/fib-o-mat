@@ -140,7 +140,7 @@ class SpotListBackend(BackendBase):
         )
 
     def _rasterize_and_add(self, ptn: pattern.Pattern[shapes.Shape]):
-        dwell_points = np.array(ptn.raster_style.rasterize(ptn.raster_style,
+        dwell_points = np.array(ptn.raster_style.rasterize(
             ptn.dim_shape, ptn.mill, self._length_unit, self._time_unit
         ).dwell_points)
 
