@@ -1,6 +1,6 @@
 """Provide the :class:`Mill` class."""
 from typing import Optional
-
+import types
 from fibomat.units import QuantityType, has_time_dim, Q_
 from fibomat.mill.ionbeam import IonBeam
 
@@ -90,3 +90,19 @@ class SpecialMill(MillBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
 
+
+class DDDMill(MillBase):
+    def __init__(self, dwell_time: types.FunctionType, repeats: int):
+            # TODO check other types etc
+
+            if repeats < 1:
+                raise ValueError('repeats must be at least 1.')
+
+            super().__init__(dwell_time=dwell_time, repeats=repeats)
+    @property
+    def dwell_time(self) -> types.FunctionType:
+        return self['dwell_time']
+
+    @property
+    def repeats(self) -> int:
+        return self['repeats']
