@@ -4,6 +4,7 @@ import types
 from fibomat.units import QuantityType, has_time_dim, Q_
 from fibomat.mill.ionbeam import IonBeam
 import pint
+import numpy as np
 
 class MillBase:
     def __init__(self, **kwargs):
@@ -49,9 +50,36 @@ class MillBase:
                 'Maybe you need a SpecialMill with custom properties for the used backend?'
             ) # from key_error
 
+class DDDMill(MillBase):
+    """The `DDDMill` class is used to specify the dwell_time per spot and the number of repeats for a pattern.
 
-class Mill(MillBase):
-    """The `Mill` class is used to specify the, dwell_time per spot and the number of repats for a pattern.
+    Optionally, the class can hold an object describing the shape of the ion beam which is needed if any kind of
+    optimization is done.
+    """
+    def __init__(self, dwell_time: types.FunctionType, repeats: int):
+
+            try:
+                if dwell_time.__annotations__["return"] is not pint.registry.Quantity:
+                    raise TypeError("dwell_time must give quantities")
+            except:  # User should be free not to typehint
+                print("No Typehint for dwell_time, please check if function returns quantites.")
+            if not isinstance(repeats, int):
+                raise TypeError('repats must be an int')
+
+            if repeats < 1:
+                raise ValueError('repeats must be at least 1.')
+
+            super().__init__(dwell_time=dwell_time, repeats=repeats)
+    @property
+    def dwell_time(self) -> types.FunctionType:
+        return self['dwell_time']
+
+    @property
+    def repeats(self) -> int:
+        return self['repeats']
+
+class Mill(DDDMill):
+    """The `Mill` class is used to specify a constant dwell_time per spot and the number of repats for a pattern. It should be used for 2D-Shapes.
 
     Optionally, the class can hold an object describing the shape of the ion beam which is needed if any kind of
     optimization is done.
@@ -74,8 +102,11 @@ class Mill(MillBase):
 
         if repeats < 1:
             raise ValueError('repeats must be at least 1.')
+        
+        def dwell_func(point: np.ndarray) -> QuantityType:
+            return dwell_time
 
-        super().__init__(dwell_time=dwell_time, repeats=repeats)
+        super().__init__(dwell_time=dwell_func, repeats=repeats)
 
     @property
     def dwell_time(self) -> QuantityType:
@@ -91,25 +122,3 @@ class SpecialMill(MillBase):
         super().__init__(**kwargs)
 
 
-class DDDMill(MillBase):
-    def __init__(self, dwell_time: types.FunctionType, repeats: int):
-
-            try:
-                if dwell_time.__annotations__["return"] is not pint.registry.Quantity:
-                    raise TypeError("dwell_time must give quantities")
-            except:  # User should be free not to typehint
-                print("No Typehint for dwell_time, please check if function returns quantites.")
-            if not isinstance(repeats, int):
-                raise TypeError('repats must be an int')
-
-            if repeats < 1:
-                raise ValueError('repeats must be at least 1.')
-
-            super().__init__(dwell_time=dwell_time, repeats=repeats)
-    @property
-    def dwell_time(self) -> types.FunctionType:
-        return self['dwell_time']
-
-    @property
-    def repeats(self) -> int:
-        return self['repeats']
