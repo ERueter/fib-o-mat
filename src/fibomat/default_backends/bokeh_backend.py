@@ -180,6 +180,7 @@ class BokehBackend(BokehBackendBase):
         image_alpha: float = 0.75,
         plot_reduced_lattices: bool = False,
         only_sites: bool = False,
+        plot_rasterized: bool = True,
         **kwargs,
     ):
         """
@@ -226,6 +227,8 @@ class BokehBackend(BokehBackendBase):
 
         self._plot_reduced_latties = plot_reduced_lattices
 
+        self._plot_rasterized = plot_rasterized
+
         self._bokeh_sites: List[BokehSite] = []
         self._annotation_site = BokehSite(
             site_index=-1,
@@ -238,6 +241,14 @@ class BokehBackend(BokehBackendBase):
         self._image_annotation: List[BokehImage] = []
         self._image_alpha = float(image_alpha)
         self.fig: Optional[bp.Figure] = None
+        self.fig = bp.figure(
+            title=self._title,
+            x_axis_label=f"x / {self._unit:~P}",
+            y_axis_label=f"y / {self._unit:~P}",
+            match_aspect=True,
+            sizing_mode="stretch_both" if self._fullscreen else "stretch_width",
+            tools="pan,wheel_zoom,reset,save",
+        )
 
     def process_site(self, site: Site):
         self._bokeh_sites.append(
@@ -255,9 +266,54 @@ class BokehBackend(BokehBackendBase):
 
         if not self._only_sites:
             super().process_site(site)
+    
+    def test_methode(self, ptn: Pattern):
+        rasterized_pattern = ptn.raster_style.rasterize(
+            dim_shape=ptn.dim_shape,
+            mill=ptn.mill,
+            out_length_unit=self._unit,
+            out_time_unit=Q_("1 ms")
+        )
+        points = rasterized_pattern.dwell_points
+        x = points[:, 0]
+        y = points[:, 1]
+
+        fig = bp.figure(
+            title=self._title,
+            x_axis_label=f"x / {self._unit:~P}",
+            y_axis_label=f"y / {self._unit:~P}",
+            match_aspect=True,
+            sizing_mode="stretch_both" if self._fullscreen else "stretch_width",
+            tools="pan,wheel_zoom,reset,save",
+        )
+
+        fig.circle(x, y, size=5, color="black")
+        self.fig = fig
+    def _plot_rasterized_points(self, rasterized_pattern) -> None:
+            points = rasterized_pattern.dwell_points
+            x = points[:, 0]
+            y = points[:, 1]
+            print(self.fig)
+
+            self.fig.circle(x, y, size=5, color="black")
+            self.show()
+
+    def _process_rasterized(self, ptn: Pattern):
+        rasterized_pattern = ptn.raster_style.rasterize(
+            dim_shape=ptn.dim_shape,
+            mill=ptn.mill,
+            out_length_unit=self._unit,
+            out_time_unit=Q_("1 ms")
+        )
+        self._plot_rasterized_points(rasterized_pattern)
+
+
 
     def process_pattern(self, ptn: Pattern) -> None:
         # super().process_pattern(ptn)
+        if self._plot_rasterized:
+            self._process_rasterized(ptn)
+            return
         def dispatch(extracted_ptn):
             try:
                 method = self.implemented_shape_methods[
@@ -475,6 +531,9 @@ class BokehBackend(BokehBackendBase):
             ("description", "@description")
         ]
 
+        fig = self.fig
+        """
+
         fig = bp.figure(
             title=self._title,
             x_axis_label=f"x / {self._unit:~P}",
@@ -483,6 +542,7 @@ class BokehBackend(BokehBackendBase):
             sizing_mode="stretch_both" if self._fullscreen else "stretch_width",
             tools="pan,wheel_zoom,reset,save",
         )
+        """
 
         # line_color=bc.groups.red.Crimson, line_width=3  # bpal.all_palettes['Colorblind'][4][3]
 
