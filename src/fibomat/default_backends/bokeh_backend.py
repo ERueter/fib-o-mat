@@ -275,8 +275,9 @@ class BokehBackend(BokehBackendBase):
             x = points[:, 0]
             y = points[:, 1]
             t = points[:, 2]
-            color_mapper = bm.LinearColorMapper(palette=Viridis256, low=min(t), high=max(t)) 
-            color_map = linear_cmap(field_name='t', palette=Viridis256, low=min(t), high=max(t))
+            color_mapper = bm.LinearColorMapper(palette=Viridis256[::-1], low=min(t), high=max(t)) 
+            color_map = linear_cmap(field_name='t', palette=Viridis256[::-1], low=min(t), high=max(t))
+
 
             source = bm.ColumnDataSource(data=dict(x=x, y=y, t=t))
             self.fig.circle(
