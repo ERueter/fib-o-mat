@@ -6,6 +6,8 @@ from typing import Any, Dict, List, Optional, Union
 import bokeh.models as bm
 import bokeh.plotting as bp
 import bokeh.resources as br
+from bokeh.transform import linear_cmap
+from bokeh.palettes import Viridis256 
 import numpy as np
 import PIL.Image
 from bokeh.util import compiler
@@ -271,8 +273,16 @@ class BokehBackend(BokehBackendBase):
             points = rasterized_pattern.dwell_points
             x = points[:, 0]
             y = points[:, 1]
+            t = points[:, 2]
+            color_mapper = bm.LinearColorMapper(palette=Viridis256, low=min(t), high=max(t)) # TODO same map for every figure
+            color_map = linear_cmap(field_name='t', palette=Viridis256, low=min(t), high=max(t))
 
-            self.fig.circle(x, y, size=5, color="black")
+            source = bm.ColumnDataSource(data=dict(x=x, y=y, t=t))
+            self.fig.circle(
+                x='x', y='y', size=5, 
+                color=color_map,  # Corrected use of linear_cmap
+                source=source)
+    
 
 
     def _process_rasterized(self, ptn: Pattern):
@@ -292,8 +302,8 @@ class BokehBackend(BokehBackendBase):
             try:
                 self._process_rasterized(ptn)
                 return
-            except:
-                print(f"Rasterization failed for pattern {ptn}, falling back to normal plotting.")
+            except Exception as e:
+                print(f"Rasterization failed for pattern {ptn} due to {e}, falling back to normal plotting.")
         def dispatch(extracted_ptn):
             try:
                 method = self.implemented_shape_methods[
@@ -538,30 +548,6 @@ class BokehBackend(BokehBackendBase):
         renderers = self._create_renderers(fig, data_sources)
 
         self._plot_impl(data_sources)
-
-        # spot_glyphs = fig.circle_x(
-        #     x='x', y='y',
-        #     fill_color='color', line_color='color', fill_alpha=.25,
-        #     legend_group='site_id',
-        #     size=10,
-        #     source=bm.ColumnDataSource(self._collect_plot_data(ShapeType.SPOT))
-        # )
-
-        # non_filled_curve_glyphs = fig.multi_line(
-        #     xs='x', ys='y',
-        #     line_color='color', line_width=2,
-        #     legend_group='site_id',
-        #     source=bm.ColumnDataSource(self._collect_plot_data(ShapeType.NON_FILLED_CURVE))
-        # )
-
-        # filled_curve_glyphs = fig.multi_polygons(
-        #     xs='x', ys='y',
-        #     line_width=2,
-        #     fill_color='color', line_color='color', fill_alpha='fill_alpha',
-        #     hatch_pattern='hatch_pattern',
-        #     legend_group='site_id',
-        #     source=bm.ColumnDataSource(self._collect_plot_data(ShapeType.FILLED_CURVE))
-        # )
 
         # images
         if images := self._image_annotation:
