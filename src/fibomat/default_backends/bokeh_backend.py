@@ -280,7 +280,7 @@ class BokehBackend(BokehBackendBase):
 
 
             source = bm.ColumnDataSource(data=dict(x=x, y=y, t=t))
-            self.fig.circle(
+            self.fig.scatter(
                 x='x', y='y', size=5, 
                 color=color_map,
                 source=source)
@@ -456,7 +456,7 @@ class BokehBackend(BokehBackendBase):
 
     @staticmethod
     def _create_renderers(fig, data_sources):
-        spot_glyphs = fig.circle_x(
+        spot_glyphs = fig.scatter(
             x="x",
             y="y",
             fill_color="color",
