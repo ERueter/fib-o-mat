@@ -251,6 +251,7 @@ class BokehBackend(BokehBackendBase):
             sizing_mode="stretch_both" if self._fullscreen else "stretch_width",
             tools="pan,wheel_zoom,reset,save",
         )
+        self.point_cloud = []
 
     def process_site(self, site: Site):
         self._bokeh_sites.append(
@@ -269,19 +270,21 @@ class BokehBackend(BokehBackendBase):
         if not self._only_sites:
             super().process_site(site)
 
-    def _plot_rasterized_points(self, rasterized_pattern) -> None:
-            points = rasterized_pattern.dwell_points
+    def _plot_rasterized_points(self) -> None:
+            points = np.concatenate(self.point_cloud, axis=0)#rasterized_pattern.dwell_points
             x = points[:, 0]
             y = points[:, 1]
             t = points[:, 2]
-            color_mapper = bm.LinearColorMapper(palette=Viridis256, low=min(t), high=max(t)) # TODO same map for every figure
+            color_mapper = bm.LinearColorMapper(palette=Viridis256, low=min(t), high=max(t)) 
             color_map = linear_cmap(field_name='t', palette=Viridis256, low=min(t), high=max(t))
 
             source = bm.ColumnDataSource(data=dict(x=x, y=y, t=t))
             self.fig.circle(
                 x='x', y='y', size=5, 
-                color=color_map,  # Corrected use of linear_cmap
+                color=color_map,
                 source=source)
+            color_bar = bm.ColorBar(color_mapper=color_mapper, label_standoff=12, location=(0, 0), title = "dwell time (ms)")
+            self.fig.add_layout(color_bar, 'right')
     
 
 
@@ -292,7 +295,8 @@ class BokehBackend(BokehBackendBase):
             out_length_unit=self._unit,
             out_time_unit=Q_("1 ms")
         )
-        self._plot_rasterized_points(rasterized_pattern)
+        points = rasterized_pattern.dwell_points
+        self.point_cloud.append(points)
 
 
 
@@ -545,7 +549,9 @@ class BokehBackend(BokehBackendBase):
         fig.add_tools(bm.BoxZoomTool(match_aspect=True))
 
         data_sources = self._create_datasources()
-        renderers = self._create_renderers(fig, data_sources)
+        renderers = self._create_renderers(fig, data_sources)  # adds all vector graphics to plot
+        if self._plot_rasterized:
+            self._plot_rasterized_points()
 
         self._plot_impl(data_sources)
 
