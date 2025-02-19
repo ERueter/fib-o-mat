@@ -297,14 +297,11 @@ def fill_with_spiral(shape: Union[ArcSpline, HollowArcSpline], pitch: float) -> 
         raise TypeError(f'Shape must be ArcSpline or HollowArcSpline (got {type(shape)}).')
     
 
-    center = curve.center  # TODO include center of bounding box or idk something in case center != (0,0)
+    center = curve.center 
     bbox = curve.bounding_box
     radius = np.linalg.norm(bbox.upper_right - bbox.center)  # radius circumscribed circle
     
-    theta_max = radius/pitch + 2*np.pi#2 * np.pi * radius / pitch
-    #theta = np.arange(0, theta_max, 0.1)
-
-    import matplotlib.pyplot as plt
+    theta_max = radius/pitch + 2*np.pi
 
     curve = sympy.Curve(
     [t*pitch*cos(t)+center[0], t*pitch*sin(t)+center[1]],
