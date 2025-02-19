@@ -3,6 +3,10 @@ from typing import List, Tuple, Optional, Dict, Any, Union
 
 import numpy as np
 
+import sympy
+from sympy.abc import t
+from sympy import sin, cos
+
 from fibomat.shapes.arc import Arc
 from fibomat.shapes.line import Line
 from fibomat.shapes.polygon import Polygon
@@ -266,3 +270,48 @@ def fill_with_lines(
                 fill_lines.append(fill_line)
 
     return fill_lines
+
+
+def fill_with_spiral(shape: Union[ArcSpline, HollowArcSpline], pitch: float) -> List[Arc]:
+    from fibomat.shapes import ParametricCurve  #TODO fix this (throws circular import if imported globally)
+    from fibomat import curve_tools
+    """Fill the circumcircle of the bounding box with an Archimedean spiral.
+
+    Args:
+        shape (Union[ArcSpline, HollowArcSpline]): closed curve to be filled
+        pitch (float): distance between spiral arms
+
+
+    Returns:
+        ParametricCurve: Spiral filling the circumscribed circle of the bounding box
+
+        
+    """
+    if isinstance(shape, ArcSpline):
+        curve = shape
+        if not curve.is_closed:
+            raise ValueError('ArcSpline is not closed.')
+    elif isinstance(shape, HollowArcSpline):
+        curve = shape.boundary  # TODO include holes
+    else:
+        raise TypeError(f'Shape must be ArcSpline or HollowArcSpline (got {type(shape)}).')
+    
+
+    center = curve.center  # TODO include center of bounding box or idk something in case center != (0,0)
+    bbox = curve.bounding_box
+    radius = np.linalg.norm(bbox.upper_right - bbox.center)  # radius circumscribed circle
+    
+    theta_max = radius/pitch + 2*np.pi#2 * np.pi * radius / pitch
+    #theta = np.arange(0, theta_max, 0.1)
+
+    import matplotlib.pyplot as plt
+
+    curve = sympy.Curve(
+    [t*pitch*cos(t)+center[0], t*pitch*sin(t)+center[1]],
+    (t, 0, theta_max)
+    )
+
+
+    parametric_curve = ParametricCurve.from_sympy_curve(curve, try_length_integration=False)
+    return parametric_curve
+
