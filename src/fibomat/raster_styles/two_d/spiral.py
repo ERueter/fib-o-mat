@@ -14,18 +14,25 @@ from fibomat.raster_styles.scansequence import ScanSequence
 
 
 class Spiral(RasterStyle):
-    def __init__(self, pitch: LengthQuantity, spiral_pitch: LengthQuantity, scan_sequence: ScanSequence):
+    """
+    pitch: pitch between points on the spiral
+    spiral_pitch: distance between arms of the spiral
+    direction: "outwards" for beginning in the center, "inwards" for beginning outside, "out-in" for going out and back in
+
+    """
+    def __init__(self, pitch: LengthQuantity, spiral_pitch: LengthQuantity, scan_sequence: ScanSequence, direction: str):
         self._pitch = pitch
         self._spiral_pitch = spiral_pitch
         self._scan_sequence = scan_sequence
+        self._direction = direction
 
     @property
     def dimension(self) -> int:
         return 2
 
     @property
-    def line_pitch(self):
-        return None
+    def pitch(self):
+        return self._pitch
 
     @property
     def scan_sequence(self):
@@ -36,7 +43,7 @@ class Spiral(RasterStyle):
         return None
 
     @property
-    def invert(self):
+    def direction(self):
         return None
 
     @property
@@ -67,11 +74,7 @@ class Spiral(RasterStyle):
     ) -> RasterizedPattern:
         
         from fibomat import U_
-        #raise Exception(isinstance(self._spiral_pitch, LengthQuantity))
         spiral_pitch = self._spiral_pitch._magnitude
-        #self._spiral_pitch._magnitude = 1
-        #raise Exception(test._dimensionality)
-        #raise Exception(type(self._spiral_pitch[1]))
 
         test = U_(self._spiral_pitch._units)
 
@@ -90,6 +93,12 @@ class Spiral(RasterStyle):
         rasterized_pat = curve.rasterize(dim_shape=spiral_spline* test, mill=mill, out_length_unit=out_length_unit, out_time_unit=out_time_unit)     
         
         points_inside = [p for p in rasterized_pat._dwell_points if spline_shape.contains(p[0:2])]
+
+        if self._direction == "inwards":
+            points_inside.reverse()
+        if self._direction == "out-in":
+            points_inside = points_inside + list(reversed(points_inside))
+
         points_inside = np.array(points_inside)
 
         rasterized_pat._dwell_points = points_inside
