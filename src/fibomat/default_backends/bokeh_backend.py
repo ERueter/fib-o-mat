@@ -278,7 +278,6 @@ class BokehBackend(BokehBackendBase):
             color_mapper = bm.LinearColorMapper(palette=Viridis256[::-1], low=min(t), high=max(t)) 
             color_map = linear_cmap(field_name='t', palette=Viridis256[::-1], low=min(t), high=max(t))
 
-
             source = bm.ColumnDataSource(data=dict(x=x, y=y, t=t))
             self.fig.scatter(
                 x='x', y='y', size=5, 

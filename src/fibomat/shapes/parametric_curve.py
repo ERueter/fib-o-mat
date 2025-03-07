@@ -134,7 +134,7 @@ class ParametricCurve(Shape, ArcSplineCompatible):
             (dfunc[0]*d2func[1] - dfunc[1]*d2func[0]) / (dfunc[0]**2 + dfunc[1]**2)**sympy.Rational(3, 2)
         )
 
-        # todo: time out integration
+        # TODO : time out integration
         lambda_length: Optional[Callable]
         if try_length_integration:
             length = sympy.simplify(sympy.integrate(sympy.sqrt(dfunc[0]*dfunc[0] + dfunc[1]*dfunc[1]), curve.parameter))

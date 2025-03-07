@@ -77,9 +77,8 @@ def stream_file_impl(n_rep=1, margin=0.9, dac16bit=True, hfw_rounding=True, time
         if height != 0 and width/height > xy_aspect_ratio: # TODO check this whole part, for now just avoid width/0 (happens for single point)
             hfw = width / margin
         else:
-            print(margin)
             hfw = height * xy_aspect_ratio / margin
-        if hfw > 0: #TODO check if this makes sense/understand what hfw does. For now just avoid log(0) this way
+        if hfw > 0: #TODO For now just avoid log(0) this way
             hfw = round_hfw(hfw)
         if hfw == 0:
             print("calculated horizontal field width to be 0. hfw was set to 1000")
