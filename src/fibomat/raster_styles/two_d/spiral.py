@@ -10,6 +10,7 @@ from fibomat.mill import Mill
 from fibomat.rasterizedpattern import RasterizedPattern
 from fibomat.curve_tools import fill_with_spiral, rasterize, fill_with_lines
 import numpy as np
+from typing import Optional
 from fibomat.raster_styles.scansequence import ScanSequence
 
 
@@ -20,10 +21,13 @@ class Spiral(RasterStyle):
     direction: "outwards" for beginning in the center, "inwards" for beginning outside, "out-in" for going out and back in
 
     """
-    def __init__(self, pitch: LengthQuantity, spiral_pitch: LengthQuantity, scan_sequence: ScanSequence, direction: str):
+    def __init__(self, pitch: LengthQuantity, spiral_pitch: LengthQuantity, scan_sequence: ScanSequence, direction: Optional[str]):
         self._pitch = pitch
         self._spiral_pitch = spiral_pitch
         self._scan_sequence = scan_sequence
+        if direction:
+            if direction not in ["outwards", "inwards", "out-in"]:
+                raise ValueError("Direction must be 'outwards', 'inwards' or 'in-out', if not specified it is 'outwards'.")
         self._direction = direction
 
     @property
@@ -39,28 +43,12 @@ class Spiral(RasterStyle):
         return self._scan_sequence
 
     @property
-    def alpha(self):
-        return None
-
-    @property
     def direction(self):
         return None
 
     @property
     def line_style(self):
         return None
-
-    def rasterize_safe(
-            self,
-            dim_shape: Tuple[shapes.Shape, LengthUnit],
-            repeats: int,
-            time_unit: TimeQuantity,
-            length_unit: LengthUnit
-    ) -> rasterizedpoints.RasterizedPoints:
-        pass
-
-    def explode(self, *args):
-        pass
 
 
     def rasterize(
