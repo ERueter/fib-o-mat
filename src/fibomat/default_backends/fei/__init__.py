@@ -37,8 +37,8 @@ def stream_file_impl(n_rep=1, margin=0.9, dac16bit=True, hfw_rounding=True, time
     def streamfile_type(dac16bit=dac16bit, time_low_res=time_low_res):
         if dac16bit:
             x_res = 65536  # 2^16 = 65536
-            # resolution is smaller i y direction. Ref. user manual.
-            y_res = 56576
+            #  actually the user manual is lying, y resolution is the same you just can't see it on the screen anymore# resolution is smaller i y direction. Ref. user manual.
+            y_res = x_res  #56576
             if time_low_res == 'low':
                 time_unit = 100  # [ns]
                 header = 's16\n'
@@ -71,7 +71,7 @@ def stream_file_impl(n_rep=1, margin=0.9, dac16bit=True, hfw_rounding=True, time
         fov = parameters["fov"]
         center = fov.center
         width, height = fov.width, fov.height
-        if isinstance(width, Q_):
+        if isinstance(width, Q_):  # fov was a dimensioned bounding box
             assert isinstance(height, Q_)
             height=height.magnitude
             width=width.magnitude
