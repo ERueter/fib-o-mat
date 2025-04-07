@@ -6,7 +6,7 @@ from typing import Dict, Any
 import math
 import numpy as np
 from fibomat.units import scale_factor
-from fibomat import utils, U_, Q_
+from fibomat import utils, U_, Q_, Vector
 from fibomat.default_backends import SpotListBackend
 
 
@@ -71,13 +71,17 @@ def stream_file_impl(n_rep=1, margin=0.9, dac16bit=True, hfw_rounding=True, time
         fov = parameters["fov"]
         center = fov.center
         width, height = fov.width, fov.height
+        if isinstance(width, Q_):
+            assert isinstance(height, Q_)
+            height=height.magnitude
+            width=width.magnitude
+            center=Vector(center[0].magnitude, center[1].magnitude)
         xy_aspect_ratio = x_res/y_res
         # Setting the horizontal field width (HFW) based on which is FOV aspect ratio
         if height != 0 and width/height > xy_aspect_ratio: # TODO check this whole part, for now just avoid width/0 (happens for single point)
             hfw = width / margin
         else:
             hfw = height * xy_aspect_ratio / margin
-        #raise Exception(hfw)
         if hfw > 0: #TODO For now just avoid log(0) this way
             hfw = round_hfw(hfw)
         if hfw == 0:
