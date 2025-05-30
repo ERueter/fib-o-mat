@@ -93,7 +93,7 @@ class Spiral(RasterStyle):
         y_vals = spiral_pitch * t_n * np.sin(t_n)
 
         # Stack as N×2 array
-        spiral_points = np.column_stack((x_vals, y_vals))
+        spiral_points = np.column_stack((x_vals, y_vals))+center
 
         """
         filling_spiral = fill_with_spiral(  # spiral filling circumscribed circle of bounding box
