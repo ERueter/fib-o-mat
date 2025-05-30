@@ -82,15 +82,15 @@ class Spiral(RasterStyle):
         bbox = spline_shape.bounding_box
         radius = np.linalg.norm(bbox.upper_right - bbox.center)  # radius of circumscribed circle
 
-        theta_max = radius / spiral_pitch + 2 * np.pi
+        theta_max = (radius / spiral_pitch)*2 * np.pi
         t_val = np.arange(0, theta_max, tang_pitch)
 
         # Compute t_n from arc length spacing approximation
-        t_n = np.sqrt(2 * t_val / spiral_pitch)
+        t_n = np.sqrt(2 * t_val / (spiral_pitch/(2*np.pi)))
 
         # Compute x and y coordinates
-        x_vals = spiral_pitch * t_n * np.cos(t_n)
-        y_vals = spiral_pitch * t_n * np.sin(t_n)
+        x_vals = (spiral_pitch/(2*np.pi)) * t_n * np.cos(t_n)
+        y_vals = (spiral_pitch/(2*np.pi)) * t_n * np.sin(t_n)
 
         # Stack as N×2 array
         spiral_points = np.column_stack((x_vals, y_vals))+center
