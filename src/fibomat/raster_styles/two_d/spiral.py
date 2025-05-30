@@ -51,32 +51,37 @@ class Spiral(RasterStyle):
         return None
 
 
+
     def rasterize(
         self,
         dim_shape: DimShape,
         mill: Mill,
         out_length_unit: LengthUnit,
         out_time_unit: TimeUnit,
-        rasterize_pitch = 0.1,
-        rasterize_epsilon = 0.001
     ) -> RasterizedPattern:
-        
-        # TODO somewhere a factor of 6 comes in hups
-        print(out_length_unit, out_time_unit)
+        """
+        dim_shape: Shape to be rasterized
+        mill: Mill to be used
+        out_length_unit: Unit handed over to the rasterized pattern
+        out_time_unit: Timeunit handed over to the rasterized pattern
 
+        uses an arclength-approximation for the spiral described in 
+        https://math.stackexchange.com/questions/2335055/placing-points-equidistantly-along-an-archimedean-spiral-from-parametric-equatio
+
+        Note/TODO: Not completely tested if the approximation is well enough. Not tested if it is okay to parametrize by arclength, as this
+        results in more points per area in the shape's center than outside.
+        TODO: This method is not tested yet for complex shapes, for example shapes with holes.
+        TODO: This method is a pain in the ass. No good compatability with fibomat at all. Implement backstitch-option etc. as for other raster styles.
+        Creating an actual spiral filling the area and then sampling would be more similar to linebyline-rasterstyle. Breaking this rasterization down to 
+        one-d-rasterization instead of reimplementing everything would be much cleaner. 
+        Biggest problem is that creating the spiral and rasterizing it as a curve takes way longer than the currently implemented version.
+        """
+        
         from fibomat import U_
         spiral_pitch=scale_to(out_length_unit, self._spiral_pitch)
         tang_pitch=scale_to(out_length_unit, self._pitch)
-        #spiral_pitch = self._spiral_pitch._magnitude 
-        #tang_pitch = self._pitch._magnitude
-
-        #test = U_(self._spiral_pitch._units)  # TODO fix naming
-
-        #scan = self._scan_sequence
 
         spline_shape = dim_shape.shape.to_arc_spline() 
-
-        # https://math.stackexchange.com/questions/2335055/placing-points-equidistantly-along-an-archimedean-spiral-from-parametric-equatio
 
         center = spline_shape.center 
         bbox = spline_shape.bounding_box
@@ -92,33 +97,15 @@ class Spiral(RasterStyle):
         x_vals = (spiral_pitch/(2*np.pi)) * t_n * np.cos(t_n)
         y_vals = (spiral_pitch/(2*np.pi)) * t_n * np.sin(t_n)
 
-        # Stack as N×2 array
+        # Stack as N×2 array and translate to the correct center
         spiral_points = np.column_stack((x_vals, y_vals))+center
 
-        """
-        filling_spiral = fill_with_spiral(  # spiral filling circumscribed circle of bounding box
-            spline_shape, pitch=spiral_pitch
-        )
-
-        #spiral_points = rasterize_sympy_curve(filling_spiral, tang_pitch)
-        spiral_points = rasterize_spiral_lambertw(filling_spiral, tang_pitch)
-        """
-        print("Spiralenpunkte:")
-        print(spiral_points)
-
         dwell_times = [scale_to(out_time_unit, mill.dwell_time(p)) for p in spiral_points] 
-        print("Dwell Times:")
-        print(type(dwell_times))
-        print(dwell_times)
-
         dwell_times = np.array(dwell_times)
-        print(type(dwell_times))
 
         dwell_points = np.column_stack((spiral_points, dwell_times))
-        print("dwell points:")
-        print(dwell_points)
 
-
+        # remove points contained in the circumscribed circle of the boundingbox but not in the shape
         points_inside = [p for p in dwell_points if spline_shape.contains(p[:2])]
         points_inside = np.array(points_inside)
 
@@ -134,45 +121,10 @@ class Spiral(RasterStyle):
 
 
 
-        #raise Exception(rast_test, len(rast_test))
-
-
-        """
-        #spiral_spline = filling_spiral.to_arc_spline(rasterize_pitch=rasterize_pitch, epsilon=rasterize_epsilon) # TODO perhaps make parameters variable
-        #curve = Curve(self._pitch, scan)
-        # TODO is out_length_unit correct for the spiral spline?
-
-        rasterized_pat = curve.rasterize(dim_shape=spiral_spline* test, mill=mill, out_length_unit=out_length_unit, out_time_unit=out_time_unit)     
-        # TODO don't go to arc spline but rasterize curve directely?
-        points_inside = [p for p in rasterized_pat._dwell_points if spline_shape.contains(p[0:2])]
-
-        if self._direction == "inwards":
-            points_inside.reverse()
-        if self._direction == "out-in":
-            points_inside = points_inside + list(reversed(points_inside))
-
-        points_inside = np.array(points_inside)
-
-        rasterized_pat._dwell_points = points_inside
-
-        return rasterized_pat
-        """
-
-
-
-import numpy as np
-from sympy import lambdify, sqrt, diff
-from sympy import cos, sin, pi
-from sympy.abc import t
-
-from sympy.geometry import Curve
-from scipy.integrate import quad
-from scipy.optimize import root_scalar
-
-
 
 def rasterize_sympy_curve(curve: Curve, pitch: float, total_arc_length=None):
     """
+    TODO: this is a relict from when trying to calculate arclength parametrization directly. Probably just delete this method?
     Sample points on a sympy Curve at regular arc-length intervals (tangential pitch).
     
     Parameters:
@@ -183,6 +135,14 @@ def rasterize_sympy_curve(curve: Curve, pitch: float, total_arc_length=None):
     Returns:
     - NumPy array with shape (N, 2) of (x, y) points
     """
+    import numpy as np
+    from sympy import lambdify, sqrt, diff
+    from sympy import cos, sin, pi
+    from sympy.abc import t
+
+    from sympy.geometry import Curve
+    from scipy.integrate import quad
+    from scipy.optimize import root_scalar
 
     # Unpack parameter and limits
     param, t_start, t_end = curve.limits
@@ -237,6 +197,7 @@ from scipy.integrate import quad
 
 def rasterize_spiral_lambertw(curve, pitch):
     """
+    TODO this is another outdated idea to compute the arclength, probably to be deleted as well
     Rasterizes a sympy-defined Archimedean spiral using arc-length spacing via Lambert W.
 
     Parameters:
