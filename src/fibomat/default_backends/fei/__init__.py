@@ -6,6 +6,7 @@ from typing import Dict, Any
 import math
 import numpy as np
 from fibomat.units import scale_factor
+from fibomat import units
 from fibomat import utils, U_, Q_, Vector
 from fibomat.default_backends import SpotListBackend
 
@@ -71,11 +72,12 @@ def stream_file_impl(n_rep=1, margin=0.9, dac16bit=True, hfw_rounding=True, time
         fov = parameters["fov"]
         center = fov.center
         width, height = fov.width, fov.height
+        # TODO doesn't work yet for boundinboxes with area 0, fix this
         if isinstance(width, Q_):  # fov was a dimensioned bounding box
             assert isinstance(height, Q_)
-            height=height.magnitude
-            width=width.magnitude
-            center=Vector(center[0].magnitude, center[1].magnitude)
+            height=units.scale_to(U_("µm"), height)
+            width=units.scale_to(U_("µm"), width)
+            center=Vector(units.scale_to(U_("µm"), center[0].magnitude), center[1].magnitude)
         xy_aspect_ratio = x_res/y_res
         # Setting the horizontal field width (HFW) based on which is FOV aspect ratio
         if height != 0 and width/height > xy_aspect_ratio: # TODO check this whole part, for now just avoid width/0 (happens for single point)
@@ -90,8 +92,10 @@ def stream_file_impl(n_rep=1, margin=0.9, dac16bit=True, hfw_rounding=True, time
         shift = center - (hfw/2, hfw/xy_aspect_ratio/2)
         dwell_points[:, 0:2] = (dwell_points[:, 0:2]-shift)*x_res/hfw
         # Setting the dwell time to correct units
-        dwell_points[:, 2] *= scale_factor(U_('ns'),
-                                           parameters["time_unit"])/time_unit
+        # time was expressed in base_dwell_time (e.g. 0.1 ns) by spotlist_backend.py . We want to change this to ns. scale_factor ignores magnitudes of quantities
+        # so we have to correct this by scaling with the magnitude.
+        dwell_points[:, 2] *= (scale_factor(U_('ns'),
+                                           parameters["base_dwell_time"])*parameters["base_dwell_time"].magnitude)/time_unit
         dwell_points = dwell_points.round()
 
         stripped = filename.split('.', 1)[0]
