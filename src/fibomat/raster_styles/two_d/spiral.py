@@ -76,10 +76,10 @@ class Spiral(RasterStyle):
         one-d-rasterization instead of reimplementing everything would be much cleaner. 
         Biggest problem is that creating the spiral and rasterizing it as a curve takes way longer than the currently implemented version.
         """
-        
-        from fibomat import U_
+
         spiral_pitch=scale_to(out_length_unit, self._spiral_pitch)
         tang_pitch=scale_to(out_length_unit, self._pitch)
+        dim_shape.set_unit(out_length_unit)  # scaling the shape too prevents memory overload from to big theta_max
 
         spline_shape = dim_shape.shape.to_arc_spline() 
 
@@ -114,7 +114,7 @@ class Spiral(RasterStyle):
         elif self._direction == "out-in":
             points_inside = np.concatenate([points_inside, points_inside[::-1]])
 
-        # 7. Wrap in RasterizedPattern
+        #Wrap in RasterizedPattern
         rast_pat = RasterizedPattern(points_inside, out_length_unit, out_time_unit)
         return rast_pat
 
