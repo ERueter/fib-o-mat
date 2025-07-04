@@ -101,7 +101,7 @@ class Spiral(RasterStyle):
         # Stack as N×2 array and translate to the correct center
         spiral_points = np.column_stack((x_vals, y_vals))+center
 
-        if isinstance(mill, SILMill):
+        if isinstance(mill, SILMill):  # unit-compatibility between mill and points. TODO: do this for every Mill and every Rasterstyle. 
             mill.set_unit(out_length_unit)
 
         dwell_times = [scale_to(out_time_unit, mill.dwell_time(p)) for p in spiral_points] 
