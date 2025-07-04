@@ -1,7 +1,7 @@
 """Provide the :class:`Mill` class."""
 from typing import Optional
 import types
-from fibomat.units import QuantityType, has_time_dim, Q_
+from fibomat.units import QuantityType, has_time_dim, has_length_dim, Q_
 from fibomat.units import Q_, scale_to
 from fibomat.mill.ionbeam import IonBeam
 import pint
@@ -124,6 +124,11 @@ class SILMill(DDDMill):
             raise TypeError('repeats must be an int')
         if repeats < 1:
             raise ValueError('repeats must be at least 1.')
+        if not isinstance(radius_sil, Q_) or not isinstance(radius, Q_):
+            raise TypeError('both radii must be a quantity.')
+
+        if not has_length_dim(radius_sil) or not has_length_dim(radius):
+            raise ValueError('both radii must have dimension [length].')
 
         # Store as quantities (with units if possible)
         self._radius_sil = radius_sil.magnitude
