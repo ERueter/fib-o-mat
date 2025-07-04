@@ -6,7 +6,7 @@ from fibomat.shapes import rasterizedpoints
 from fibomat import shapes
 from fibomat.units import LengthUnit, TimeUnit, LengthQuantity, TimeQuantity, has_length_dim, scale_to, scale_factor
 from fibomat.shapes import Shape, RasterizedPoints, DimShape
-from fibomat.mill import Mill
+from fibomat.mill import DDDMill, SILMill
 from fibomat.rasterizedpattern import RasterizedPattern
 from fibomat.curve_tools import fill_with_spiral, rasterize, fill_with_lines
 import numpy as np
@@ -55,7 +55,7 @@ class Spiral(RasterStyle):
     def rasterize(
         self,
         dim_shape: DimShape,
-        mill: Mill,
+        mill: DDDMill,
         out_length_unit: LengthUnit,
         out_time_unit: TimeUnit,
     ) -> RasterizedPattern:
@@ -100,6 +100,9 @@ class Spiral(RasterStyle):
 
         # Stack as N×2 array and translate to the correct center
         spiral_points = np.column_stack((x_vals, y_vals))+center
+
+        if isinstance(mill, SILMill):
+            mill.set_unit(out_length_unit)
 
         dwell_times = [scale_to(out_time_unit, mill.dwell_time(p)) for p in spiral_points] 
         dwell_times = np.array(dwell_times)
