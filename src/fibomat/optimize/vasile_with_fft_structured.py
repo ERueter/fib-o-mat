@@ -39,7 +39,7 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
         fig, axs = plt.subplots(3, 3, figsize=(18, 12))
         axs = axs.flatten()
 
-        # Z selbst
+        # plot Z
         im0 = axs[0].imshow(Z, origin="lower", cmap="viridis")
         axs[0].set_title("Z (Profile)")
         fig.colorbar(im0, ax=axs[0])
@@ -54,16 +54,16 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
         axs[2].set_title("dz/dy")
         fig.colorbar(im2, ax=axs[2])
 
-        # Querschnitt in x-Richtung (Mitte)
+        # Plot section in x-direction
         mid_y = Z.shape[0] // 2
         axs[3].scatter(np.arange(Z.shape[1]) * dx, Z[mid_y, :])
         axs[3].set_title("Z Section along x-axis")
         axs[3].set_xlabel("x")
         axs[3].set_ylabel("Z")
 
-        # Gradient in x-Richtung (Mitte)
+        # dzdx in x-direction
         axs[4].scatter(np.arange(dzdx.shape[1]) * dx, dzdx[mid_y, :], label="FFT-Gradient", marker="x")
-        # NumPy-Gradient berechnen und plotten
+        # NumPy-Gradient
         dzdx_np = np.gradient(Z, dx, axis=1)
         axs[4].scatter(np.arange(dzdx_np.shape[1]) * dx, dzdx_np[mid_y, :], label="NumPy-Gradient", marker="x")
         axs[4].set_title("Gradient dz/dx (section)")
@@ -71,9 +71,9 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
         axs[4].set_ylabel("dz/dx")
         axs[4].legend()
 
-        # Gradient in x-Richtung (Mitte)
+        # dzdy in x-direction
         axs[5].scatter(np.arange(dzdy.shape[1]) * dy, dzdy[mid_y, :], label="FFT-Gradient", marker="x")
-        # NumPy-Gradient berechnen und plotten
+        # NumPy-Gradient
         dzdy_np = np.gradient(Z, dy, axis=0)
         axs[5].scatter(np.arange(dzdy_np.shape[1]) * dx, dzdy_np[mid_y, :], label="NumPy-Gradient", marker="x")
         axs[5].set_title("Gradient dz/dx (section)")
@@ -81,16 +81,14 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
         axs[5].set_ylabel("dz/dx")
         axs[5].legend()
 
-
-
-# Querschnitt in y-Richtung (Mitte)
+        # Section in y-direction
         mid_x = Z.shape[1] // 2
         axs[6].scatter(np.arange(Z.shape[0]) * dy, Z[:, mid_x])
         axs[6].set_title("Section along y-axis")
         axs[6].set_xlabel("y")
         axs[6].set_ylabel("Z")
 
-        # dzdx entlang y-Achse (bei x=Mitte)
+        # dzdx in y-direction
         axs[7].scatter(np.arange(dzdx.shape[0]) * dy, dzdx[:, mid_x], label="FFT-Gradient", marker="x")
         dzdx_np = np.gradient(Z, dx, axis=1)
         axs[7].scatter(np.arange(dzdx_np.shape[0]) * dy, dzdx_np[:, mid_x], label="NumPy-Gradient", marker="x")
@@ -99,7 +97,7 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
         axs[7].set_ylabel("dz/dx")
         axs[7].legend()
 
-        # dzdy entlang y-Achse (bei x=Mitte)
+        # dzdy in y-direction
         axs[8].scatter(np.arange(dzdy.shape[0]) * dy, dzdy[:, mid_x], label="FFT-Gradient", marker="x")
         dzdy_np = np.gradient(Z, dy, axis=0)
         axs[8].scatter(np.arange(dzdy_np.shape[0]) * dy, dzdy_np[:, mid_x], label="NumPy-Gradient", marker="x")
@@ -107,7 +105,6 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
         axs[8].set_xlabel("y")
         axs[8].set_ylabel("dz/dy")
         axs[8].legend()
-
 
         plt.tight_layout()
         plt.show()
