@@ -8,13 +8,14 @@ from scipy.sparse.linalg import LinearOperator, lsqr
 def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     """
     Spectral discrete gradient implemantation for increased accuracy. Using fft for simplicicy which technically isn't optimal for all data.
-    Maybe switch to using https://pypi.org/project/spectral-derivatives/ later.
+    Maybe switch to using https://pypi.org/project/spectral-derivatives/ later. Sometimes numpy has better accuracy and can be selected as well.
 
     Args: 
     Z: nd Array of the data which shall be differentiated
     dx: Step size in x direction
     dy: Step size in y direction
     sigma_smooth: Optional parameter for smoothing Z before calculating the gradient
+    numpy: If True, numpy.gradient is used to calculate gradient.
 
     Returns:
     Gradient in x and y direction
