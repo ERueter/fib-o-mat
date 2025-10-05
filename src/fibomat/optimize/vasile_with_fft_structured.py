@@ -110,3 +110,16 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
         plt.tight_layout()
         plt.show()
     return dzdx, dzdy
+
+
+def update_S_from_Z(Z, dx, dy, Y0=2.5, p=2.0, q=0.0, sigma_smooth=1, numpy=False, verbose=False):
+    dzdx, dzdy = compute_grad(Z,dx,dy, sigma_smooth, numpy) #np.gradient(Z, dx, dy) hat so eine Art mit den Achsen aligntes Kreuz verursacht??
+    cos_theta = 1.0 / np.sqrt(1.0 + dzdx**2 + dzdy**2)
+    cos_theta = np.clip(cos_theta, 1e-3, 1.0)
+    sput_yield = Y0 * (cos_theta**p) * np.exp(-q*(1.0/cos_theta - 1.0))
+    if verbose:
+        plt.imshow(sput_yield, "coolwarm")
+        plt.title("Sputter Yield")
+        plt.colorbar()
+        plt.show()
+    return sput_yield
