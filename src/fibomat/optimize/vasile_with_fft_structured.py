@@ -4,6 +4,7 @@ from scipy.signal import fftconvolve
 from scipy.ndimage import gaussian_filter
 from scipy.sparse.linalg import LinearOperator, lsqr
 
+# TODO whole package uses kind of annoying pixel-setup and is unitless. Should be unified with fibomat-unit-system for consistency and quality of life.
 
 def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     """
@@ -138,3 +139,49 @@ def update_S_from_Z(Z, dx, dy, Y0=2.5, p=-0.5, q=0.0, sigma_smooth=1, numpy=Fals
         plt.colorbar()
         plt.show()
     return sput_yield
+
+def preprocess_Z(Z, sigma_phys, dx, verbose=False):
+    """
+    Blurs the target surface to a realistic surface
+    Args: 
+    Z: Target Surface
+    sigma_phys: Sigma which should be used for blurring in physical unit, gets adapted to pixel size internally
+    dx: Pixelsize in x-direction TODO technically y-direction should be included as well
+    verbose: If True, Z and blurred Z are plotted
+
+    Return: Blurred Z
+    """
+    Z_blur = gaussian_filter(Z, sigma_phys/dx, mode="constant")
+    if verbose:
+        fig, axes = plt.subplots(1, 2, figsize=(10, 4))
+
+        im0 = axes[0].imshow(Z, cmap="viridis", origin="lower")
+        axes[0].set_title("Original Z_target")
+        plt.colorbar(im0, ax=axes[0], fraction=0.046, label="Depth [m]")
+
+        im1 = axes[1].imshow(Z_blur, cmap="viridis", origin="lower")
+        axes[1].set_title("Blurred Z_target")
+        plt.colorbar(im1, ax=axes[1], fraction=0.046, label="Depth [m]")
+
+        plt.tight_layout()
+        plt.show()
+
+
+        center_idx = Z.shape[0] // 2
+        x_axis = np.arange(Z.shape[1]) * dx
+
+        orig_cut = Z[center_idx, :]
+        blur_cut = Z_blur[center_idx, :]
+
+        plt.figure(figsize=(7, 5))
+        plt.plot(x_axis, orig_cut, label="Original", linewidth=2)
+        plt.plot(x_axis, blur_cut, "--", label="Blurred", linewidth=2)
+        plt.xlabel("x-Position")
+        plt.ylabel("Depth [m]")
+        plt.title("Section along x-Axis")
+        plt.legend()
+        plt.grid(True)
+        plt.tight_layout()
+        plt.show()
+
+    return Z_blur
