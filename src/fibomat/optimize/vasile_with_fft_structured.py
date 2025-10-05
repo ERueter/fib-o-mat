@@ -145,7 +145,7 @@ def preprocess_Z(Z, sigma_phys, dx, verbose=False):
     Blurs the target surface to a realistic surface
     Args: 
     Z: Target Surface
-    sigma_phys: Sigma which should be used for blurring in physical unit, gets adapted to pixel size internally
+    sigma_phys: Sigma which should be used for blurring in physical unit, gets adapted to pixel size internally. Normally, this should be at least the standard deviation of the ion beam used.
     dx: Pixelsize in x-direction TODO technically y-direction should be included as well
     verbose: If True, Z and blurred Z are plotted
 
@@ -185,3 +185,4 @@ def preprocess_Z(Z, sigma_phys, dx, verbose=False):
         plt.show()
 
     return Z_blur
+
