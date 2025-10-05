@@ -30,11 +30,11 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     n, m = Z.shape
     kx = np.fft.fftfreq(n, d=dx) * 2*np.pi
     ky = np.fft.fftfreq(m, d=dy) * 2*np.pi
-    KX, KY = np.meshgrid(kx, ky, indexing="xy")
+    KX, KY = np.meshgrid(kx, ky, indexing="ij")
 
     Zk = np.fft.fft2(Z)
-    dzdx = np.fft.ifft2(1j * KX * Zk).real
-    dzdy = np.fft.ifft2(1j * KY * Zk).real
+    dzdx = np.fft.ifft2(1j * KY * Zk).real
+    dzdy = np.fft.ifft2(1j * KX * Zk).real
 
     if verbose:
         fig, axs = plt.subplots(3, 3, figsize=(18, 12))
@@ -77,9 +77,9 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
         # NumPy-Gradient
         dzdy_np = np.gradient(Z, dy, axis=0)
         axs[5].scatter(np.arange(dzdy_np.shape[1]) * dx, dzdy_np[mid_y, :], label="NumPy-Gradient", marker="x")
-        axs[5].set_title("Gradient dz/dx (section)")
+        axs[5].set_title("Gradient dz/dy (section)")
         axs[5].set_xlabel("x")
-        axs[5].set_ylabel("dz/dx")
+        axs[5].set_ylabel("dz/dy")
         axs[5].legend()
 
         # Section in y-direction
