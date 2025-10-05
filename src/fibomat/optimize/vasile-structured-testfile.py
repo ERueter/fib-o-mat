@@ -43,4 +43,5 @@ dx, dy = vas.compute_grad(Z_target, dx, dy, verbose=True)
 # Test sputter yield computation
 S_theta = vas.update_S_from_Z(Z_target, dx, dy, numpy=False, verbose = True)
 
+# Test preprocessing 
 Z_blurred = vas.preprocess_Z(Z_target, sigma, dx, True)
