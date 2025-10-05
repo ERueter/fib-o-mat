@@ -12,6 +12,7 @@ import vasile_with_fft_structured as vas
 n = 400
 Z_target = np.zeros((n, n))
 dx = dy = 0.025e-6
+sigma = 0.2e-6           # Beam sigma [m]
 
 # Parameter
 radius_sil = 2.0e-6   # inner radius
@@ -41,3 +42,5 @@ dx, dy = vas.compute_grad(Z_target, dx, dy, verbose=True)
 
 # Test sputter yield computation
 S_theta = vas.update_S_from_Z(Z_target, dx, dy, numpy=False, verbose = True)
+
+Z_blurred = vas.preprocess_Z(Z_target, sigma, dx, True)
