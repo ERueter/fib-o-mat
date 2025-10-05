@@ -112,8 +112,23 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     return dzdx, dzdy
 
 
-def update_S_from_Z(Z, dx, dy, Y0=2.5, p=2.0, q=0.0, sigma_smooth=1, numpy=False, verbose=False):
-    dzdx, dzdy = compute_grad(Z,dx,dy, sigma_smooth, numpy) #np.gradient(Z, dx, dy) hat so eine Art mit den Achsen aligntes Kreuz verursacht??
+def update_S_from_Z(Z, dx, dy, Y0=2.5, p=-0.5, q=0.0, sigma_smooth=1, numpy=False, verbose=False):
+    """
+    Calculate the sputter yield matrix from the current surface.
+
+    Args:
+    Z: Matrix of current depth at each pixel
+    dx: Pixelsize in x-direction
+    dy: Pixelsize in y-direction
+    Y0, p, q: Parameter from Yamamura-formula (TODO find reasonable default values)
+    sigma_smooth: Amount of smoothing to be used on surface while calculating gradient
+    numpy: If True, numpy.gradient is used for gradient calculation
+    verbose: If True, sputter yield gets plotted
+
+    Return:
+    Matrix with the sputter yield for each pixel
+    """
+    dzdx, dzdy = compute_grad(Z,dx,dy, sigma_smooth, numpy) # sometimes numpy = True caused a cross aligned with the axis?
     cos_theta = 1.0 / np.sqrt(1.0 + dzdx**2 + dzdy**2)
     cos_theta = np.clip(cos_theta, 1e-3, 1.0)
     sput_yield = Y0 * (cos_theta**p) * np.exp(-q*(1.0/cos_theta - 1.0))
