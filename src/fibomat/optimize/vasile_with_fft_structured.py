@@ -186,3 +186,118 @@ def preprocess_Z(Z, sigma_phys, dx, verbose=False):
 
     return Z_blur
 
+
+
+
+
+
+def process_full_target(Z_target, dz, K, dx, dy, f_xy, h, postprocess, verbose=True, plot_every=10):
+    
+    n = Z_target.shape[0]
+    Z_current = np.zeros_like(Z_target)
+    dwell_maps = []
+
+    num_slices = int(np.ceil(Z_target.max() / dz))
+    if verbose:
+        print(f"Starte Slice-Simulation: {num_slices} Slices à {dz*1e9:.1f} nm")
+
+    for s in range(num_slices):
+        # gewünschte Slice-Tiefe (Differenz, max dz)
+        D_slice = np.clip(Z_target - Z_current, 0, dz)
+        if np.all(D_slice == 0):
+            if verbose: print("Zielprofil erreicht.")
+            break
+        D_vec = D_slice.ravel()
+
+        # aktuelles S_theta nach Yamamura
+        S_theta = update_S_from_Z(Z_current, dx, dy)
+
+
+        # Operatoren für diesen Slice
+        def C_dot(x_vec):
+            X = x_vec.reshape((n, n))
+            pre = S_theta * X
+            conv = fftconvolve(pre, K, mode='same')  # TODO checken, ab wann die Näherung mit dem S_theta rausziehen eigentlich fine ist.
+            return ((f_xy / h) * conv).ravel()
+
+        def CT_dot(y_vec):
+            Y = y_vec.reshape((n, n))
+            temp = f_xy * Y
+            convT = fftconvolve(temp, np.flip(np.flip(K,0),1), mode='same')
+            return ((S_theta * convT) / h).ravel()
+
+        C_linop = LinearOperator((n*n, n*n), matvec=C_dot, rmatvec=CT_dot, dtype=np.float64)
+
+
+        # LSQR solve
+        res = lsqr(C_linop, D_vec, atol=1e-6, btol=1e-6, iter_lim=200)  # TODO tolerance outfiguren
+        t_unconstr = res[0]
+        t_clip = np.clip(t_unconstr, 0, None)
+        # TODO das mit dem gaussfilter könnte eins schon als Option reinnehmen... ist manchmal nicht sooo schlecht.
+        #t_clip = gaussian_filter(t_clip.reshape(n,n), sigma=4).ravel() # TODO ganz scatchy Versuch. Wie groß muss sigma sein???
+
+        # FISTA refine TODO tolerance outfiguren
+        t_refined = postprocess(D_vec, t_clip, C_dot, CT_dot, n)#smooth_iterative_refine(D_vec, t_clip, C_dot, CT_dot, n, lam=1e-3), None, None#fista_projected(D_vec, t_clip, L_est,C_dot, CT_dot,
+                         #              maxiter=maxiter, tol_dt=1e-8, verbose=False) # tol_dt=1e-8
+        dwell_maps.append(t_refined)
+
+        # Update Oberfläche
+        Z_delta = ((f_xy / h) * fftconvolve(t_refined.reshape(n,n), K, mode='same')) * S_theta
+        Z_current += Z_delta
+
+        if verbose and (s % plot_every == 0 or s == num_slices-1):
+
+            residual = Z_target - Z_delta # Gesamtfehler... TODO checken, ob hier numerischer Fehler mit drin ist?
+            #residual = (C_dot(t_fista) - D_vec).reshape((n, n))  <- Das geht davon aus, dass überall dieselbe Sputterrate war wie sie in dieser Slice ist...
+
+            fig, axes = plt.subplots(1, 4, figsize=(15,5))
+
+            im3 = axes[3].imshow(D_slice, cmap="viridis")
+            axes[3].set_title(f"Zielslice für {s+1}/{num_slices}")
+            plt.colorbar(im3, ax=axes[3], fraction=0.046, label="Tiefe [m]")
+
+            im0 = axes[0].imshow(Z_current, cmap="viridis")
+            axes[0].set_title(f"Oberfläche nach Slice {s+1}/{num_slices}")
+            plt.colorbar(im0, ax=axes[0], fraction=0.046, label="Tiefe [m]")
+
+            im1 = axes[1].imshow(S_theta, cmap="plasma")
+            axes[1].set_title("Sputter Yield $S_\\theta$")
+            plt.colorbar(im1, ax=axes[1], fraction=0.046, label="atoms/ion")
+
+            vmax = np.max(np.abs(residual))
+            im2 = axes[2].imshow(residual, cmap="RdBu", vmin=-vmax, vmax=vmax)
+            axes[2].set_title("Residual (C t - D)")
+            plt.colorbar(im2, ax=axes[2], fraction=0.046, label="Tiefe [m]")
+
+            plt.suptitle(f"Slice {s+1}/{num_slices}")
+            plt.tight_layout()
+            plt.show()
+
+            if verbose and (s % plot_every == 0 or s == num_slices-1):
+                # ---------------------------
+                # Querschnitt: vor/nach FISTA
+                # ---------------------------
+                center_idx = n // 2
+                x_axis = (np.arange(n) - n//2) * dx * 1e6  # in µm
+
+                # Oberflächenprofile rekonstruieren
+                Z_before = ((f_xy / h) * fftconvolve(t_clip.reshape(n,n), K, mode='same')) * S_theta
+                Z_after  = ((f_xy / h) * fftconvolve(t_refined.reshape(n,n), K, mode='same')) * S_theta
+
+                target_cut = Z_target[center_idx, :] * 1e9
+                before_cut = (Z_before[center_idx, :]) * 1e9
+                after_cut  = (Z_after[center_idx, :]) * 1e9
+
+                plt.figure(figsize=(7,5))
+                plt.plot(x_axis, target_cut, label="Zielprofil", color="black", linewidth=2)
+                plt.plot(x_axis, before_cut, label="Vor FISTA", color="red", linestyle="--", linewidth=2)
+                plt.plot(x_axis, after_cut,  label="Nach FISTA", color="blue", linestyle="-.", linewidth=2)
+                plt.xlabel("x [µm]")
+                plt.ylabel("Tiefe [nm]")
+                plt.title(f"Querschnitt durch Kugelmitte (Slice {s+1})")
+                plt.legend()
+                plt.grid(True)
+                plt.tight_layout()
+                plt.show()
+
+    return Z_current, dwell_maps
