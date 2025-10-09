@@ -31,18 +31,41 @@ class ProcessConfig:
     h: float = 5e22 
     f_xy: np.array = np.ones((n, n)) * 1e19
     R: int = 3
-    rpx = int(np.ceil(R * sigma / dx))
-    xs = np.arange(-rpx, rpx + 1) * dx
-    ys = np.arange(-rpx, rpx + 1) * dy
-    Xk, Yk = np.meshgrid(xs, ys, indexing='xy')
-    K = np.exp(-(Xk**2 + Yk**2) / (2 * sigma**2)) / (2 * np.pi * sigma**2)
-    K /= K.sum()   # Normierung auf 1 TODO
-    K *= dx*dy
     Y0: float = 2.5
     p: float = -0.5
     q: float = 0.0
     sigma_smooth: float = 1.0
     use_numpy_grad: bool = False
+
+    # optional inputs (created in __post_init__ when omitted)
+    f_xy: Optional[np.ndarray] = None
+    K: Optional[np.ndarray] = None
+
+    # derived fields (not passed to constructor)
+    rpx: int = field(init=False)
+    xs: np.ndarray = field(init=False)
+    ys: np.ndarray = field(init=False)
+    Xk: np.ndarray = field(init=False)
+    Yk: np.ndarray = field(init=False)
+
+    def __post_init__(self):
+        # ensure f_xy matches n if not provided
+        if self.f_xy is None:
+            self.f_xy = np.ones((self.n, self.n)) * 1e19
+
+        # compute kernel support in pixels
+        self.rpx = int(np.ceil(self.R * self.sigma / self.dx))
+        self.xs = np.arange(-self.rpx, self.rpx + 1) * self.dx
+        self.ys = np.arange(-self.rpx, self.rpx + 1) * self.dy
+        self.Xk, self.Yk = np.meshgrid(self.xs, self.ys, indexing="xy")
+
+        # compute K if not provided
+        if self.K is None:
+            K = np.exp(-(self.Xk**2 + self.Yk**2) / (2 * self.sigma**2)) / (2 * np.pi * self.sigma**2)
+            K /= K.sum()
+            K *= self.dx * self.dy
+            self.K = K
+
 
 def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     """
