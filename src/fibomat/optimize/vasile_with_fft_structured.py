@@ -271,7 +271,7 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
         D_vec = D_slice.ravel()
 
         # aktuelles S_theta nach Yamamura
-        S_theta = update_S_from_Z(Z_current, config.dx, config.dy)
+        S_theta = update_S_from_Z(Z_current, config)
 
 
         # Operatoren für diesen Slice
