@@ -11,6 +11,19 @@ from typing import Optional, Callable
 
 @dataclass
 class ProcessConfig:
+    """
+    ProcessConfig unites a run's parameters. 
+    Args:
+    n: Amount of pixels in FOV
+    dx, dy: Size of a single pixel in x/y direction in [m]
+    sigma: Standarddeviation of Ionbeam in [m]
+    h: Atoms per m^3
+    f_xy : Ion Flux [ions / (m^2 s)]
+    R: times of sigma after which Beam is assumed as zero
+    Y0, p, q: Parameters from Yamamura-Formula. TODO find reasonable default parameters
+    sigma_smooth: Amount of smoothing to be applied to avoid numerical artefacts. 
+    use_numpy_grad: If True, numpy.gradient is used instead of spectral gradient.
+    """
     n: int = 400
     dx: float = 0.025e-6
     dy: float = 0.025e-6
@@ -30,8 +43,6 @@ class ProcessConfig:
     q: float = 0.0
     sigma_smooth: float = 1.0
     use_numpy_grad: bool = False
-    plot_every: int = 10
-    verbose: bool = True
 
 def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     """
