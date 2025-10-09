@@ -3,8 +3,35 @@ import matplotlib.pyplot as plt
 from scipy.signal import fftconvolve
 from scipy.ndimage import gaussian_filter
 from scipy.sparse.linalg import LinearOperator, lsqr
+from dataclasses import dataclass, field
+from typing import Optional, Callable
 
-# TODO whole package uses kind of annoying pixel-setup and is unitless. Should be unified with fibomat-unit-system for consistency and quality of life.
+
+# TODO whole package uses kind of annoying pixel-setup and is unitless. Should be unified with fibomat-unit-system for consistency and quality of life?
+
+@dataclass
+class ProcessConfig:
+    n: int = 400
+    dx: float = 0.025e-6
+    dy: float = 0.025e-6
+    sigma: float = 0.2e-6 
+    h: float = 5e22 
+    f_xy: np.array = np.ones((n, n)) * 1e19
+    R: int = 3
+    rpx = int(np.ceil(R * sigma / dx))
+    xs = np.arange(-rpx, rpx + 1) * dx
+    ys = np.arange(-rpx, rpx + 1) * dy
+    Xk, Yk = np.meshgrid(xs, ys, indexing='xy')
+    K = np.exp(-(Xk**2 + Yk**2) / (2 * sigma**2)) / (2 * np.pi * sigma**2)
+    K /= K.sum()   # Normierung auf 1 TODO
+    K *= dx*dy
+    Y0: float = 2.5
+    p: float = -0.5
+    q: float = 0.0
+    sigma_smooth: float = 1.0
+    use_numpy_grad: bool = False
+    plot_every: int = 10
+    verbose: bool = True
 
 def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     """
@@ -113,7 +140,7 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     return dzdx, dzdy
 
 
-def update_S_from_Z(Z, dx, dy, Y0=2.5, p=-0.5, q=0.0, sigma_smooth=1, numpy=False, verbose=False):
+def update_S_from_Z(Z, dx, dy, config: ProcessConfig):
     """
     Calculate the sputter yield matrix from the current surface.
 
@@ -129,11 +156,11 @@ def update_S_from_Z(Z, dx, dy, Y0=2.5, p=-0.5, q=0.0, sigma_smooth=1, numpy=Fals
     Return:
     Matrix with the sputter yield for each pixel
     """
-    dzdx, dzdy = compute_grad(Z,dx,dy, sigma_smooth, numpy) # sometimes numpy = True caused a cross aligned with the axis?
+    dzdx, dzdy = compute_grad(Z,dx,dy, config.sigma_smooth, config.numpy) # sometimes numpy = True caused a cross aligned with the axis?
     cos_theta = 1.0 / np.sqrt(1.0 + dzdx**2 + dzdy**2)
     cos_theta = np.clip(cos_theta, 1e-3, 1.0)
-    sput_yield = Y0 * (cos_theta**p) * np.exp(-q*(1.0/cos_theta - 1.0))
-    if verbose:
+    sput_yield = config.Y0 * (cos_theta**p) * np.exp(-config.q*(1.0/cos_theta - 1.0))
+    if config.verbose:
         plt.imshow(sput_yield, "coolwarm")
         plt.title("Sputter Yield")
         plt.colorbar()
@@ -196,13 +223,13 @@ def process_full_target(Z_target, dz, K, dx, dy, f_xy, h, postprocess, verbose=T
     n = Z_target.shape[0]
     Z_current = np.zeros_like(Z_target)
     dwell_maps = []
-
     num_slices = int(np.ceil(Z_target.max() / dz))
+
     if verbose:
         print(f"Starte Slice-Simulation: {num_slices} Slices à {dz*1e9:.1f} nm")
 
     for s in range(num_slices):
-        # gewünschte Slice-Tiefe (Differenz, max dz)
+        # targeted slice depth
         D_slice = np.clip(Z_target - Z_current, 0, dz)
         if np.all(D_slice == 0):
             if verbose: print("Zielprofil erreicht.")
