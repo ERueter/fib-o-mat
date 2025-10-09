@@ -252,9 +252,9 @@ def preprocess_Z(Z, sigma_phys, dx, verbose=False):
 
 
 
-def process_full_target(Z_target, dz, K, dx, dy, f_xy, h, postprocess, verbose=True, plot_every=10):
+def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10):
     
-    n = Z_target.shape[0]
+    n = config.n
     Z_current = np.zeros_like(Z_target)
     dwell_maps = []
     num_slices = int(np.ceil(Z_target.max() / dz))
@@ -271,21 +271,21 @@ def process_full_target(Z_target, dz, K, dx, dy, f_xy, h, postprocess, verbose=T
         D_vec = D_slice.ravel()
 
         # aktuelles S_theta nach Yamamura
-        S_theta = update_S_from_Z(Z_current, dx, dy)
+        S_theta = update_S_from_Z(Z_current, config.dx, config.dy)
 
 
         # Operatoren für diesen Slice
         def C_dot(x_vec):
             X = x_vec.reshape((n, n))
             pre = S_theta * X
-            conv = fftconvolve(pre, K, mode='same')  # TODO checken, ab wann die Näherung mit dem S_theta rausziehen eigentlich fine ist.
-            return ((f_xy / h) * conv).ravel()
+            conv = fftconvolve(pre, config.K, mode='same')  # TODO checken, ab wann die Näherung mit dem S_theta rausziehen eigentlich fine ist.
+            return ((config.f_xy / config.h) * conv).ravel()
 
         def CT_dot(y_vec):
             Y = y_vec.reshape((n, n))
-            temp = f_xy * Y
-            convT = fftconvolve(temp, np.flip(np.flip(K,0),1), mode='same')
-            return ((S_theta * convT) / h).ravel()
+            temp = config.f_xy * Y
+            convT = fftconvolve(temp, np.flip(np.flip(config.K,0),1), mode='same')
+            return ((S_theta * convT) / config.h).ravel()
 
         C_linop = LinearOperator((n*n, n*n), matvec=C_dot, rmatvec=CT_dot, dtype=np.float64)
 
@@ -303,7 +303,7 @@ def process_full_target(Z_target, dz, K, dx, dy, f_xy, h, postprocess, verbose=T
         dwell_maps.append(t_refined)
 
         # Update Oberfläche
-        Z_delta = ((f_xy / h) * fftconvolve(t_refined.reshape(n,n), K, mode='same')) * S_theta
+        Z_delta = ((config.f_xy / config.h) * fftconvolve(t_refined.reshape(n,n), config.K, mode='same')) * S_theta
         Z_current += Z_delta
 
         if verbose and (s % plot_every == 0 or s == num_slices-1):
@@ -339,11 +339,11 @@ def process_full_target(Z_target, dz, K, dx, dy, f_xy, h, postprocess, verbose=T
                 # Querschnitt: vor/nach FISTA
                 # ---------------------------
                 center_idx = n // 2
-                x_axis = (np.arange(n) - n//2) * dx * 1e6  # in µm
+                x_axis = (np.arange(n) - n//2) * config.dx * 1e6  # in µm
 
                 # Oberflächenprofile rekonstruieren
-                Z_before = ((f_xy / h) * fftconvolve(t_clip.reshape(n,n), K, mode='same')) * S_theta
-                Z_after  = ((f_xy / h) * fftconvolve(t_refined.reshape(n,n), K, mode='same')) * S_theta
+                Z_before = ((config.f_xy / config.h) * fftconvolve(t_clip.reshape(n,n), config.K, mode='same')) * S_theta
+                Z_after  = ((config.f_xy / config.h) * fftconvolve(t_refined.reshape(n,n), config.K, mode='same')) * S_theta
 
                 target_cut = Z_target[center_idx, :] * 1e9
                 before_cut = (Z_before[center_idx, :]) * 1e9
