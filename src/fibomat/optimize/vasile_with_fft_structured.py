@@ -174,7 +174,7 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     return dzdx, dzdy
 
 
-def update_S_from_Z(Z, dx, dy, config: ProcessConfig):
+def update_S_from_Z(Z, config: ProcessConfig):
     """
     Calculate the sputter yield matrix from the current surface.
 
@@ -190,10 +190,10 @@ def update_S_from_Z(Z, dx, dy, config: ProcessConfig):
     Return:
     Matrix with the sputter yield for each pixel
     """
-    dzdx, dzdy = compute_grad(Z,dx,dy, config.sigma_smooth, config.numpy) # sometimes numpy = True caused a cross aligned with the axis?
+    dzdx, dzdy = compute_grad(Z,config.dx, config.dy, config.sigma_smooth, config.numpy) # sometimes numpy = True caused a cross aligned with the axis?
     cos_theta = 1.0 / np.sqrt(1.0 + dzdx**2 + dzdy**2)
     cos_theta = np.clip(cos_theta, 1e-3, 1.0)
-    sput_yield = config.Y0 * (cos_theta**p) * np.exp(-config.q*(1.0/cos_theta - 1.0))
+    sput_yield = config.Y0 * (cos_theta**config.p) * np.exp(-config.q*(1.0/cos_theta - 1.0))
     if config.verbose:
         plt.imshow(sput_yield, "coolwarm")
         plt.title("Sputter Yield")
