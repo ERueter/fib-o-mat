@@ -53,16 +53,23 @@ Z_target[between] = height * (1 - (dist[between] - radius_sil) / (radius - radiu
 # Test sputter yield computation
 #S_theta = vas.update_S_from_Z(Z_target, dx, dy, numpy=False, verbose = True)
 
+config = vas.ProcessConfig()
+
 # Test preprocessing 
-Z_blurred = vas.preprocess_Z(Z_target, sigma, dx, True)
+Z_blurred = vas.preprocess_Z(Z_target, config, True)
 
 def postprocess(D_vec, t_clip, C_dot, CT_dot, n):
     return t_clip
 
 dz = 20e-8#50e-8  # 0.050 um pro Slice 
+"""
 Z_final, dwell_maps = vas.process_full_target(
     Z_blurred, dz, K, dx, dy, f_xy, h, postprocess, verbose=False, plot_every=5
 )
+"""
+
+
+Z_final, dwell_maps = vas.process_full_target(Z_target=Z_blurred, dz=dz, config=config, postprocess=postprocess)
 
 np.savez("simulation_results_struct.npz",
          Z_final=Z_final,
