@@ -202,7 +202,7 @@ def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
         plt.show()
     return sput_yield
 
-def preprocess_Z(Z, sigma_phys, dx, verbose=False):
+def preprocess_Z(Z, config: ProcessConfig, verbose=False):
     """
     Blurs the target surface to a realistic surface
     Args: 
@@ -213,7 +213,7 @@ def preprocess_Z(Z, sigma_phys, dx, verbose=False):
 
     Return: Blurred Z
     """
-    Z_blur = gaussian_filter(Z, sigma_phys/dx, mode="constant")
+    Z_blur = gaussian_filter(Z, config.sigma/config.dx, mode="constant")
     if verbose:
         fig, axes = plt.subplots(1, 2, figsize=(10, 4))
 
@@ -230,7 +230,7 @@ def preprocess_Z(Z, sigma_phys, dx, verbose=False):
 
 
         center_idx = Z.shape[0] // 2
-        x_axis = np.arange(Z.shape[1]) * dx
+        x_axis = np.arange(Z.shape[1]) * config.dx
 
         orig_cut = Z[center_idx, :]
         blur_cut = Z_blur[center_idx, :]
