@@ -7,7 +7,8 @@ from dataclasses import dataclass, field
 from typing import Optional, Callable
 
 
-# TODO whole package uses kind of annoying pixel-setup and is unitless. Should be unified with fibomat-unit-system for consistency and quality of life?
+# TODO whole package uses kind of annoying pixel-setup and is unitless. Should be unified with fibomat-unit-system for consistency and quality of life? On the other hand usability 
+# without fibomat would be cool, so shouldn't use fibomat-units but should stick to pixels?
 
 @dataclass
 class ProcessConfig:
@@ -67,7 +68,7 @@ class ProcessConfig:
             self.K = K
 
 
-def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
+def compute_grad(Z, config: ProcessConfig, verbose=False):
     """
     Spectral discrete gradient implemantation for increased accuracy. Using fft for simplicicy which technically isn't optimal for all data.
     Maybe switch to using https://pypi.org/project/spectral-derivatives/ later. Sometimes numpy has better accuracy and can be selected as well.
@@ -83,15 +84,15 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
     Gradient in x and y direction
 
     """
-    if sigma_smooth > 0:
-        Z = gaussian_filter(Z, sigma=sigma_smooth)
-    if numpy:
+    if config.sigma_smooth > 0:
+        Z = gaussian_filter(Z, sigma=config.sigma_smooth)
+    if config.use_numpy_grad:
         if verbose:
             print("numpy-Option was selected. For further analysis set numpy to False.")
-        return np.gradient(Z, dx, axis=1), np.gradient(Z, dy, axis=0)
+        return np.gradient(Z, config.dx, axis=1), np.gradient(Z, config.dy, axis=0)
     n, m = Z.shape
-    kx = np.fft.fftfreq(n, d=dx) * 2*np.pi
-    ky = np.fft.fftfreq(m, d=dy) * 2*np.pi
+    kx = np.fft.fftfreq(n, d=config.dx) * 2*np.pi
+    ky = np.fft.fftfreq(m, d=config.dy) * 2*np.pi
     KX, KY = np.meshgrid(kx, ky, indexing="ij")
 
     Zk = np.fft.fft2(Z)
@@ -119,26 +120,26 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
 
         # Plot section in x-direction
         mid_y = Z.shape[0] // 2
-        axs[3].scatter(np.arange(Z.shape[1]) * dx, Z[mid_y, :])
+        axs[3].scatter(np.arange(Z.shape[1]) * config.dx, Z[mid_y, :])
         axs[3].set_title("Z Section along x-axis")
         axs[3].set_xlabel("x")
         axs[3].set_ylabel("Z")
 
         # dzdx in x-direction
-        axs[4].scatter(np.arange(dzdx.shape[1]) * dx, dzdx[mid_y, :], label="FFT-Gradient", marker="x")
+        axs[4].scatter(np.arange(dzdx.shape[1]) * config.dx, dzdx[mid_y, :], label="FFT-Gradient", marker="x")
         # NumPy-Gradient
-        dzdx_np = np.gradient(Z, dx, axis=1)
-        axs[4].scatter(np.arange(dzdx_np.shape[1]) * dx, dzdx_np[mid_y, :], label="NumPy-Gradient", marker="x")
+        dzdx_np = np.gradient(Z, config.dx, axis=1)
+        axs[4].scatter(np.arange(dzdx_np.shape[1]) * config.dx, dzdx_np[mid_y, :], label="NumPy-Gradient", marker="x")
         axs[4].set_title("Gradient dz/dx (section)")
         axs[4].set_xlabel("x")
         axs[4].set_ylabel("dz/dx")
         axs[4].legend()
 
         # dzdy in x-direction
-        axs[5].scatter(np.arange(dzdy.shape[1]) * dy, dzdy[mid_y, :], label="FFT-Gradient", marker="x")
+        axs[5].scatter(np.arange(dzdy.shape[1]) * config.dy, dzdy[mid_y, :], label="FFT-Gradient", marker="x")
         # NumPy-Gradient
-        dzdy_np = np.gradient(Z, dy, axis=0)
-        axs[5].scatter(np.arange(dzdy_np.shape[1]) * dx, dzdy_np[mid_y, :], label="NumPy-Gradient", marker="x")
+        dzdy_np = np.gradient(Z, config.dy, axis=0)
+        axs[5].scatter(np.arange(dzdy_np.shape[1]) * config.dx, dzdy_np[mid_y, :], label="NumPy-Gradient", marker="x")
         axs[5].set_title("Gradient dz/dy (section)")
         axs[5].set_xlabel("x")
         axs[5].set_ylabel("dz/dy")
@@ -146,24 +147,24 @@ def compute_grad(Z, dx, dy, sigma_smooth=1, numpy = False, verbose=False):
 
         # Section in y-direction
         mid_x = Z.shape[1] // 2
-        axs[6].scatter(np.arange(Z.shape[0]) * dy, Z[:, mid_x])
+        axs[6].scatter(np.arange(Z.shape[0]) * config.dy, Z[:, mid_x])
         axs[6].set_title("Section along y-axis")
         axs[6].set_xlabel("y")
         axs[6].set_ylabel("Z")
 
         # dzdx in y-direction
-        axs[7].scatter(np.arange(dzdx.shape[0]) * dy, dzdx[:, mid_x], label="FFT-Gradient", marker="x")
-        dzdx_np = np.gradient(Z, dx, axis=1)
-        axs[7].scatter(np.arange(dzdx_np.shape[0]) * dy, dzdx_np[:, mid_x], label="NumPy-Gradient", marker="x")
+        axs[7].scatter(np.arange(dzdx.shape[0]) * config.dy, dzdx[:, mid_x], label="FFT-Gradient", marker="x")
+        dzdx_np = np.gradient(Z, config.dx, axis=1)
+        axs[7].scatter(np.arange(dzdx_np.shape[0]) * config.dy, dzdx_np[:, mid_x], label="NumPy-Gradient", marker="x")
         axs[7].set_title("Gradient dz/dx (section)")
         axs[7].set_xlabel("y")
         axs[7].set_ylabel("dz/dx")
         axs[7].legend()
 
         # dzdy in y-direction
-        axs[8].scatter(np.arange(dzdy.shape[0]) * dy, dzdy[:, mid_x], label="FFT-Gradient", marker="x")
-        dzdy_np = np.gradient(Z, dy, axis=0)
-        axs[8].scatter(np.arange(dzdy_np.shape[0]) * dy, dzdy_np[:, mid_x], label="NumPy-Gradient", marker="x")
+        axs[8].scatter(np.arange(dzdy.shape[0]) * config.dy, dzdy[:, mid_x], label="FFT-Gradient", marker="x")
+        dzdy_np = np.gradient(Z, config.dy, axis=0)
+        axs[8].scatter(np.arange(dzdy_np.shape[0]) * config.dy, dzdy_np[:, mid_x], label="NumPy-Gradient", marker="x")
         axs[8].set_title("Gradient dz/dy (section)")
         axs[8].set_xlabel("y")
         axs[8].set_ylabel("dz/dy")
@@ -190,7 +191,7 @@ def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
     Return:
     Matrix with the sputter yield for each pixel
     """
-    dzdx, dzdy = compute_grad(Z,config.dx, config.dy, config.sigma_smooth, config.use_numpy_grad) # sometimes numpy = True caused a cross aligned with the axis?
+    dzdx, dzdy = compute_grad(Z, config) # sometimes numpy = True caused a cross aligned with the axis?
     cos_theta = 1.0 / np.sqrt(1.0 + dzdx**2 + dzdy**2)
     cos_theta = np.clip(cos_theta, 1e-3, 1.0)
     sput_yield = config.Y0 * (cos_theta**config.p) * np.exp(-config.q*(1.0/cos_theta - 1.0))
