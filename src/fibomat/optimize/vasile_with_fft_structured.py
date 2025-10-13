@@ -261,21 +261,19 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
     num_slices = int(np.ceil(Z_target.max() / dz))
 
     if verbose:
-        print(f"Starte Slice-Simulation: {num_slices} Slices à {dz*1e9:.1f} nm")
+        print(f"Starting Slice-Simulation: {num_slices} Slices à {dz*1e9:.1f} nm")
 
     for s in range(num_slices):
         # targeted slice depth
         D_slice = np.clip(Z_target - Z_current, 0, dz)
         if np.all(D_slice == 0):
-            if verbose: print("Zielprofil erreicht.")
+            if verbose: print("Target profile reached.")
             break
         D_vec = D_slice.ravel()
 
-        # aktuelles S_theta nach Yamamura
         S_theta = update_S_from_Z(Z_current, config)
 
-
-        # Operatoren für diesen Slice
+        # Matrices for current surface profile
         def C_dot(x_vec):
             X = x_vec.reshape((n, n))
             pre = S_theta * X
@@ -292,35 +290,31 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
 
 
         # LSQR solve
-        res = lsqr(C_linop, D_vec, atol=1e-6, btol=1e-6, iter_lim=200)  # TODO tolerance outfiguren
+        res = lsqr(C_linop, D_vec, atol=1e-6, btol=1e-6, iter_lim=200)  # TODO figure out tolerances
         t_unconstr = res[0]
         t_clip = np.clip(t_unconstr, 0, None)
-        # TODO das mit dem gaussfilter könnte eins schon als Option reinnehmen... ist manchmal nicht sooo schlecht.
-        #t_clip = gaussian_filter(t_clip.reshape(n,n), sigma=4).ravel() # TODO ganz scatchy Versuch. Wie groß muss sigma sein???
 
-        # FISTA refine TODO tolerance outfiguren
         t_refined = postprocess(D_vec, t_clip, C_dot, CT_dot, n)#smooth_iterative_refine(D_vec, t_clip, C_dot, CT_dot, n, lam=1e-3), None, None#fista_projected(D_vec, t_clip, L_est,C_dot, CT_dot,
                          #              maxiter=maxiter, tol_dt=1e-8, verbose=False) # tol_dt=1e-8
         dwell_maps.append(t_refined)
 
-        # Update Oberfläche
+        # Update Surface
         Z_delta = ((config.f_xy / config.h) * fftconvolve(t_refined.reshape(n,n), config.K, mode='same')) * S_theta
         Z_current += Z_delta
 
         if verbose and (s % plot_every == 0 or s == num_slices-1):
 
-            residual = Z_target - Z_delta # Gesamtfehler... TODO checken, ob hier numerischer Fehler mit drin ist?
-            #residual = (C_dot(t_fista) - D_vec).reshape((n, n))  <- Das geht davon aus, dass überall dieselbe Sputterrate war wie sie in dieser Slice ist...
+            residual = Z_target - Z_delta # overall error, not slice-specific
 
             fig, axes = plt.subplots(1, 4, figsize=(15,5))
 
             im3 = axes[3].imshow(D_slice, cmap="viridis")
-            axes[3].set_title(f"Zielslice für {s+1}/{num_slices}")
-            plt.colorbar(im3, ax=axes[3], fraction=0.046, label="Tiefe [m]")
+            axes[3].set_title(f"Target slice for {s+1}/{num_slices}")
+            plt.colorbar(im3, ax=axes[3], fraction=0.046, label="Depth [m]")
 
             im0 = axes[0].imshow(Z_current, cmap="viridis")
-            axes[0].set_title(f"Oberfläche nach Slice {s+1}/{num_slices}")
-            plt.colorbar(im0, ax=axes[0], fraction=0.046, label="Tiefe [m]")
+            axes[0].set_title(f"Surface after {s+1}/{num_slices} slices")
+            plt.colorbar(im0, ax=axes[0], fraction=0.046, label="Depth [m]")
 
             im1 = axes[1].imshow(S_theta, cmap="plasma")
             axes[1].set_title("Sputter Yield $S_\\theta$")
@@ -329,37 +323,36 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
             vmax = np.max(np.abs(residual))
             im2 = axes[2].imshow(residual, cmap="RdBu", vmin=-vmax, vmax=vmax)
             axes[2].set_title("Residual (C t - D)")
-            plt.colorbar(im2, ax=axes[2], fraction=0.046, label="Tiefe [m]")
+            plt.colorbar(im2, ax=axes[2], fraction=0.046, label="Depth [m]")
 
             plt.suptitle(f"Slice {s+1}/{num_slices}")
             plt.tight_layout()
             plt.show()
 
-            if verbose and (s % plot_every == 0 or s == num_slices-1):
-                # ---------------------------
-                # Querschnitt: vor/nach FISTA
-                # ---------------------------
-                center_idx = n // 2
-                x_axis = (np.arange(n) - n//2) * config.dx * 1e6  # in µm
+            # ---------------------------
+            # Section for checking usefullness of post-processing.
+            # ---------------------------
+            center_idx = n // 2
+            x_axis = (np.arange(n) - n//2) * config.dx * 1e6  # in µm
 
-                # Oberflächenprofile rekonstruieren
-                Z_before = ((config.f_xy / config.h) * fftconvolve(t_clip.reshape(n,n), config.K, mode='same')) * S_theta
-                Z_after  = ((config.f_xy / config.h) * fftconvolve(t_refined.reshape(n,n), config.K, mode='same')) * S_theta
+            # reconstruct surface from t
+            Z_before = ((config.f_xy / config.h) * fftconvolve(t_clip.reshape(n,n), config.K, mode='same')) * S_theta
+            Z_after  = ((config.f_xy / config.h) * fftconvolve(t_refined.reshape(n,n), config.K, mode='same')) * S_theta
 
-                target_cut = Z_target[center_idx, :] * 1e9
-                before_cut = (Z_before[center_idx, :]) * 1e9
-                after_cut  = (Z_after[center_idx, :]) * 1e9
+            target_cut = Z_target[center_idx, :] * 1e9
+            before_cut = (Z_before[center_idx, :]) * 1e9
+            after_cut  = (Z_after[center_idx, :]) * 1e9
 
-                plt.figure(figsize=(7,5))
-                plt.plot(x_axis, target_cut, label="Zielprofil", color="black", linewidth=2)
-                plt.plot(x_axis, before_cut, label="Vor FISTA", color="red", linestyle="--", linewidth=2)
-                plt.plot(x_axis, after_cut,  label="Nach FISTA", color="blue", linestyle="-.", linewidth=2)
-                plt.xlabel("x [µm]")
-                plt.ylabel("Tiefe [nm]")
-                plt.title(f"Querschnitt durch Kugelmitte (Slice {s+1})")
-                plt.legend()
-                plt.grid(True)
-                plt.tight_layout()
-                plt.show()
+            plt.figure(figsize=(7,5))
+            plt.plot(x_axis, target_cut, label="Target profile", color="black", linewidth=2)
+            plt.plot(x_axis, before_cut, label="before postprocess", color="red", linestyle="--", linewidth=2)
+            plt.plot(x_axis, after_cut,  label="after postprocess", color="blue", linestyle="-.", linewidth=2)
+            plt.xlabel("x [µm]")
+            plt.ylabel("Depth [nm]")
+            plt.title(f"Section along x-axis (Slice {s+1})")
+            plt.legend()
+            plt.grid(True)
+            plt.tight_layout()
+            plt.show()
 
     return Z_current, dwell_maps
