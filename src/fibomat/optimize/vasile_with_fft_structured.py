@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 from scipy.signal import fftconvolve
 from scipy.ndimage import gaussian_filter
 from scipy.sparse.linalg import LinearOperator, lsqr
@@ -249,10 +250,6 @@ def preprocess_Z(Z, config: ProcessConfig, verbose=False):
     return Z_blur
 
 
-
-
-
-
 def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10):
     
     n = config.n
@@ -356,3 +353,67 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
             plt.show()
 
     return Z_current, dwell_maps
+
+
+def evaluate_accuracy(Z_target, Z_final, dwell_maps, config):
+    n = Z_final.shape[0]
+    center_idx = n // 2
+    x_axis = np.arange(n) * config.dx * 1e6  # µm
+    target_cut = Z_target[center_idx, :] * 1e9  # nm
+    final_cut  = Z_final[center_idx, :] * 1e9   # nm
+    plt.figure(figsize=(7,5))
+    plt.scatter(x_axis, target_cut, label="Target Profile", linewidth=2)
+    plt.scatter(x_axis, final_cut, label="Final Profile", linestyle="--", linewidth=2)
+    plt.xlabel("x-Position [µm]")
+    plt.ylabel("Depth [nm]")
+    plt.title("Section along x-axis")
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+    num_slices = len(dwell_maps)
+    print(f"{num_slices} dwell maps found.")
+
+    # show first, middle and last dwell-map
+    indices_to_plot = [0, num_slices//2, num_slices-1]
+
+    fig, axes = plt.subplots(1, len(indices_to_plot), figsize=(5*len(indices_to_plot), 4))
+
+    for ax, idx in zip(axes, indices_to_plot):
+        t_map = dwell_maps[idx].reshape((n, n))
+        im = ax.imshow(t_map, cmap="inferno")
+        ax.set_title(f"Dwell map Slice {idx+1}/{num_slices}")
+        plt.colorbar(im, ax=ax, fraction=0.046, label="Dwell time")
+
+    plt.suptitle("Selected dwell maps")
+    plt.tight_layout()
+    plt.show()
+
+    # Section along x-axis through dwell-maps
+    cmap = plt.get_cmap("viridis")
+    num = len(dwell_maps)
+    colors = cmap(np.linspace(0, 1, num))
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    for k, t_vec in enumerate(dwell_maps):
+        t_map = t_vec.reshape((n, n))
+        cut = t_map[center_idx, :]
+        ax.scatter(x_axis, cut, color=colors[k], linewidth=1.2, alpha=0.5, marker="x")
+
+    # colorbar to indicate slice order (use fig.colorbar / pass ax to plt.colorbar)
+    norm = mpl.colors.Normalize(vmin=1, vmax=num)
+    sm = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array(np.arange(1, num+1))  # values shown in colorbar
+    cbar = fig.colorbar(sm, ax=ax, fraction=0.046)
+    cbar.set_label("Slice index")
+
+    ax.set_xlabel("x-Position [µm]")
+    ax.set_ylabel("Dwell time")
+    ax.set_title("Section of dwell maps along x-axis")
+    ax.grid(True)
+    fig.tight_layout()
+    plt.show()
+
+
+
