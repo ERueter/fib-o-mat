@@ -182,11 +182,7 @@ def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
 
     Args:
     Z: Matrix of current depth at each pixel
-    dx: Pixelsize in x-direction
-    dy: Pixelsize in y-direction
-    Y0, p, q: Parameter from Yamamura-formula (TODO find reasonable default values)
-    sigma_smooth: Amount of smoothing to be used on surface while calculating gradient
-    numpy: If True, numpy.gradient is used for gradient calculation
+    config: Parameter for this run united in a ProcessConfig-Object
     verbose: If True, sputter yield gets plotted
 
     Return:
