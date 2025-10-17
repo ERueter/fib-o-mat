@@ -37,7 +37,7 @@ class ProcessConfig:
     p: float = -0.5
     q: float = 0.0
     sigma_smooth: float = 1.0
-    use_numpy_grad: bool = False
+    use_numpy_grad: bool = True
 
     # optional inputs (created in __post_init__ when omitted)
     f_xy: Optional[np.ndarray] = None
@@ -76,13 +76,12 @@ def compute_grad(Z, config: ProcessConfig, verbose=False):
 
     Args: 
     Z: nd Array of the data which shall be differentiated
-    dx: Step size in x direction
-    dy: Step size in y direction
-    sigma_smooth: Optional parameter for smoothing Z before calculating the gradient
-    numpy: If True, numpy.gradient is used to calculate gradient.
+    config: Settings for this run
+    verbose: If true, comparision and results are plotted
 
     Returns:
     Gradient in x and y direction
+    TODO not working correctly, see example_sine.py
 
     """
     if config.sigma_smooth > 0:
@@ -363,9 +362,21 @@ def evaluate_accuracy(Z_target, Z_final, dwell_maps, config):
     plt.scatter(x_axis, final_cut, label="Final Profile", linestyle="--", linewidth=2)
     plt.xlabel("x-Position [µm]")
     plt.ylabel("Depth [nm]")
-    plt.title("Section along x-axis")
+    plt.title("Target Profile and Achieved Profile along x-Axis.")
     plt.legend()
     plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+    # Error heatmap
+    error = Z_final - Z_target
+    plt.figure(figsize=(8, 6))
+    vmax = np.max(np.abs(error))
+    im = plt.imshow(error, cmap='coolwarm', vmin=-vmax, vmax=vmax)
+    plt.colorbar(im, label='Error [m]')
+    plt.title('Error (Z_final - Z_target)')
+    plt.xlabel('x [pixels]')
+    plt.ylabel('y [pixels]')
     plt.tight_layout()
     plt.show()
 
@@ -383,7 +394,7 @@ def evaluate_accuracy(Z_target, Z_final, dwell_maps, config):
         ax.set_title(f"Dwell map Slice {idx+1}/{num_slices}")
         plt.colorbar(im, ax=ax, fraction=0.046, label="Dwell time")
 
-    plt.suptitle("Selected dwell maps")
+    plt.suptitle("Selected calculated dwell maps")
     plt.tight_layout()
     plt.show()
 
@@ -407,7 +418,7 @@ def evaluate_accuracy(Z_target, Z_final, dwell_maps, config):
 
     ax.set_xlabel("x-Position [µm]")
     ax.set_ylabel("Dwell time")
-    ax.set_title("Section of dwell maps along x-axis")
+    ax.set_title("Section of calculated dwell maps along x-axis")
     ax.grid(True)
     fig.tight_layout()
     plt.show()
