@@ -238,6 +238,7 @@ def preprocess_Z(Z, config: ProcessConfig, verbose=False):
         plt.xlabel("x-Position")
         plt.ylabel("Depth [m]")
         plt.title("Section along x-Axis")
+        plt.axis('equal')
         plt.legend()
         plt.grid(True)
         plt.tight_layout()
