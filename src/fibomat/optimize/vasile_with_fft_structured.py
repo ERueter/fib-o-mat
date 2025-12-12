@@ -91,7 +91,7 @@ def compute_grad(Z, config: ProcessConfig, verbose=False):
     if config.use_numpy_grad:
         if verbose:
             print("numpy-Option was selected. For further analysis set numpy to False.")
-        return np.gradient(Z, config.dx, axis=1, dtype=np.uint8), np.gradient(Z, config.dy, axis=0, dtype=np.uint8)
+        return np.gradient(Z, config.dx, axis=1, dtype=float), np.gradient(Z, config.dy, axis=0, dtype=float)
     n, m = Z.shape
     kx = np.fft.fftfreq(n, d=config.dx) * 2*np.pi
     ky = np.fft.fftfreq(m, d=config.dy) * 2*np.pi
@@ -251,7 +251,7 @@ def preprocess_Z(Z, config: ProcessConfig, verbose=False):
 def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10):
     
     n = config.n
-    Z_current = np.zeros_like(Z_target, dtype=np.uint8)
+    Z_current = np.zeros_like(Z_target, dtype=float)
     dwell_maps = []
     num_slices = int(np.ceil(Z_target.max() / dz))
 
