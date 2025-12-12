@@ -6,6 +6,8 @@ from scipy.ndimage import gaussian_filter
 from scipy.sparse.linalg import LinearOperator, lsqr
 from dataclasses import dataclass, field
 from typing import Optional, Callable
+from fibomat.units import QuantityType, has_time_dim, has_length_dim, Q_, U_
+from fibomat.units import Q_, scale_to
 
 
 # TODO whole package uses kind of annoying pixel-setup and is unitless. Should be unified with fibomat-unit-system for consistency and quality of life? On the other hand usability 
@@ -31,7 +33,7 @@ class ProcessConfig:
     dy: float = 0.025e-6
     sigma: float = 0.2e-6 
     h: float = 5e22 
-    f_xy: np.array = np.ones((n, n)) * 1e19
+    f_xy: int = 1e19 #np.array = np.ones((n, n), dtype=np.uint8) * 1e19 # TODO save memory here
     R: int = 3
     Y0: float = 2.5
     p: float = -0.5
@@ -53,7 +55,7 @@ class ProcessConfig:
     def __post_init__(self):
         # ensure f_xy matches n if not provided
         if self.f_xy is None:
-            self.f_xy = np.ones((self.n, self.n)) * 1e19
+             self.f_xy = 1e19 #self.f_xy = np.ones((self.n, self.n), dtype=np.uint8) * 1e19
 
         # compute kernel support in pixels
         self.rpx = int(np.ceil(self.R * self.sigma / self.dx))
@@ -89,7 +91,7 @@ def compute_grad(Z, config: ProcessConfig, verbose=False):
     if config.use_numpy_grad:
         if verbose:
             print("numpy-Option was selected. For further analysis set numpy to False.")
-        return np.gradient(Z, config.dx, axis=1), np.gradient(Z, config.dy, axis=0)
+        return np.gradient(Z, config.dx, axis=1, dtype=np.uint8), np.gradient(Z, config.dy, axis=0, dtype=np.uint8)
     n, m = Z.shape
     kx = np.fft.fftfreq(n, d=config.dx) * 2*np.pi
     ky = np.fft.fftfreq(m, d=config.dy) * 2*np.pi
@@ -249,7 +251,7 @@ def preprocess_Z(Z, config: ProcessConfig, verbose=False):
 def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10):
     
     n = config.n
-    Z_current = np.zeros_like(Z_target)
+    Z_current = np.zeros_like(Z_target, dtype=np.uint8)
     dwell_maps = []
     num_slices = int(np.ceil(Z_target.max() / dz))
 
@@ -424,4 +426,59 @@ def evaluate_accuracy(Z_target, Z_final, dwell_maps, config):
     plt.show()
 
 
+def get_target_from_mill(
+        mill,
+        resolution: int,
+        fov: QuantityType,                      # Field of view (Quantity), z.B. Q_(20, "µm")
+        unit=U_("µm"),                # nein, site-Größeneinheit, oder? #Interne Mill-Einheit
+        verbose=True
+    ):
+    """
+    Rastert eine Mill in ein 2D-Tiefenbild für die Vasile-Optimierung.
+
+    Args:
+        mill: Instanz von SILMill, SpecialMill oder DDDMill
+        resolution: Anzahl Pixel (Bild wird resolution × resolution)
+        fov: Field-of-view als Quantity (z.B. 20 µm)
+        unit: Welche Einheit die Mill-Funktion erwartet (z.B. 'µm')
+    Returns:
+        Z_target: 2D NumPy-Array in Sekunden (float), shape (resolution,resolution)
+        dx: physikalische Pixelgröße
+    """
+
+    # 1) Mill auf die gewünschte Einheit einstellen
+    if hasattr(mill, "set_unit"):
+        pass#mill.set_unit(unit)
+
+    # 2) FOV und Pixelgröße bestimmen
+    fov_mag = scale_to(unit, fov)  #fov.magnitude  # z.B. 20.0 für 20 µm
+    print(fov_mag)
+    dx = fov_mag / resolution
+
+    # 3) Koordinatenraster (Mitte = 0,0)
+    lin = (np.arange(resolution) - resolution/2 + 0.5) * dx
+    X, Y = np.meshgrid(lin, lin, indexing="xy")
+    print(np.max(X), np.max(Y))
+    print(X)
+
+    Z = np.zeros_like(X, dtype=float)
+
+    # 4) Rastere Mill-Funktion (liefert Quantity)
+    for j in range(resolution):
+        for i in range(resolution):
+            dt = mill.dwell_time(np.array([X[j,i], Y[j,i]]))
+            Z[j,i] = scale_to(U_("ms"), dt)
+
+    # 5) Wiederholungen berücksichtigen
+    if hasattr(mill, "repeats"):
+        Z *= mill.repeats
+
+    if verbose:
+        print(f"Generated target from mill:")
+        print(f"  Resolution: {resolution}×{resolution}")
+        print(f"  FOV: {fov_mag} {unit}")
+        print(f"  Pixel size: {dx} {unit}")
+        print(Z)
+
+    return Z, dx
 
