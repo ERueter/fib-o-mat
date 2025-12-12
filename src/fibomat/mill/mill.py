@@ -160,6 +160,36 @@ class SILMill(DDDMill):
         self._radii_unit = length_unit
 
 
+class MatrixMill(DDDMill):
+    def __init__(self, dwell_matrix, dx, origin=(0,0), unit="µm"):
+        """
+        dwell_matrix : 2D numpy array of dwell times
+        dx : pixel size in same units as origin/unit
+        origin : physical coordinate of pixel (0,0)
+        """
+        self.dwell_matrix = dwell_matrix
+        self.dx = dx
+        self.unit = unit
+        self.origin = origin
+
+        super().__init__(dwell_time=self._lookup_dwell, repeats=1)
+
+    def _lookup_dwell(self, point):
+        """
+        Convert point (x,y) to matrix indices and return dwell time.
+        """
+        x, y = point
+        ox, oy = self.origin
+
+        ix = int((x - ox) / self.dx)
+        iy = int((y - oy) / self.dx)
+
+        if 0 <= ix < self.dwell_matrix.shape[1] and 0 <= iy < self.dwell_matrix.shape[0]:
+            return self.dwell_matrix[iy, ix] * Q_("microsecond")
+        else:
+            return 0 * Q_("microsecond")
+
+
 class SpecialMill(MillBase):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
