@@ -11,10 +11,23 @@ class MillBase:
     def __init__(self, **kwargs):
         self._kwargs = kwargs
 
+    """
     def __repr__(self) -> str:
         return ('{}(' + ', '.join([key + '={}' for key in self._kwargs.keys()]) + ')').format(
             self.__class__.__name__, *self._kwargs.values()
         )
+    """
+    
+    def __repr__(self):
+        parts = []
+        for key, value in self._kwargs.items():
+            if isinstance(value, (types.FunctionType, types.MethodType)):
+                parts.append(f"{key}=<function>")
+            elif isinstance(value, np.ndarray):
+                parts.append(f"{key}=array(shape={value.shape}, dtype={value.dtype})")
+            else:
+                parts.append(f"{key}={value!r}")
+        return f"{self.__class__.__name__}({', '.join(parts)})"
 
     # def __getattr__(self, item):
     #     return self.__getitem__(item)
