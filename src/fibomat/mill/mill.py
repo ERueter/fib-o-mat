@@ -132,7 +132,16 @@ class Mill(DDDMill):
 
 
 class SILMill(DDDMill):
-    def __init__(self, max_dwell_time: QuantityType, radius_sil: QuantityType, radius: QuantityType, repeats: int, min_dwell_time=1):
+    """
+    Docstring for SILMill
+    
+    :var radius_sil: radius of the sphere-shaped part
+    :var radius: radius of total sil including the cone
+    :vartype repeats: number of repeats of this mill (NOT repeats of stream file, dwelltimes will get multiplied by repeats)
+    :var min_dwell_time: minimal dwell time the microscope accepts
+    :vartype max_dwell_time: maximal time milled at a point during one pass in the pattern
+    """
+    def __init__(self, radius_sil: QuantityType, radius: QuantityType, repeats=1, min_dwell_time=1, max_dwell_time = 10):
         if not isinstance(repeats, int):
             raise TypeError('repeats must be an int')
         if repeats < 1:
