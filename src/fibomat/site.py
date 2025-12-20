@@ -204,6 +204,12 @@ class Site(DimTransformable):
         """
         self.add_pattern(ptn)
         return self
+    
+    def empty_site(self):
+        """
+        Delete all patterns in this site.
+        """
+        self._patterns = []
 
     @property
     def center(self) -> DimVector:
