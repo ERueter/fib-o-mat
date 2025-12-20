@@ -32,8 +32,8 @@ class ProcessConfig:
     dx: float = 0.025e-6
     dy: float = 0.025e-6
     sigma: float = 0.2e-6 
-    h: float = 5e22 
-    f_xy: int = 1e19 #np.array = np.ones((n, n), dtype=np.uint8) * 1e19 # TODO save memory here
+    h: float = 5e28 # lets try in m^3 #5e22 # atoms/cm^3
+    f_xy: int = 1e21 #1e19 # ions/cm^2s ?   #np.array = np.ones((n, n), dtype=np.uint8) * 1e19 # TODO save memory here
     R: int = 3
     Y0: float = 2.5
     p: float = -0.5
@@ -466,11 +466,12 @@ def get_target_from_mill(
     # 4) Rastere Mill-Funktion (liefert Quantity)
     for j in range(resolution):
         for i in range(resolution):
-            dt = mill.dwell_time(np.array([X[j,i], Y[j,i]]))
-            Z[j,i] = scale_to(U_("ms"), dt)
+            dt = mill.dwell_time(np.array([X[j,i], Y[j,i]]))  # hier kriege ich es in µs von SILMill
+            Z[j,i] = scale_to(U_('µs'), dt) #scale_to(U_("ms"), dt) # Z ist dann in ms, das lassen wir jetzt mal bleiben lol gegen Einheitschaos
 
     # 5) Wiederholungen berücksichtigen
     if hasattr(mill, "repeats"):
+        print("Wir beachten repeats der Mill!")
         Z *= mill.repeats
 
     if verbose:
