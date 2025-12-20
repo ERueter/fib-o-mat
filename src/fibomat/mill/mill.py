@@ -139,7 +139,7 @@ class SILMill(DDDMill):
     :var radius: radius of total sil including the cone
     :vartype repeats: number of repeats of this mill (NOT repeats of stream file, dwelltimes will get multiplied by repeats)
     :var min_dwell_time: minimal dwell time the microscope accepts
-    :vartype max_dwell_time: maximal time milled at a point during one pass in the pattern
+    :vartype max_dwell_time: maximal time milled at a point during one pass in the pattern TODO check this out in general DDDMill
     """
     def __init__(self, radius_sil: QuantityType, radius: QuantityType, repeats=1, min_dwell_time=1, max_dwell_time = 10):
         if not isinstance(repeats, int):
