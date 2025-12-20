@@ -15,7 +15,7 @@ def calibrate(rasterstyle: raster_styles.RasterStyle) -> Callable[[float], int]:
         dim_position=(0, 0) * U_('µm'), dim_fov=(20, 20) * U_('µm')
     )
 
-    mill = Mill(1*Q_("µs"), repeats=1)
+    mill = Mill(10*Q_("µs"), repeats=1)
     circ1 = shapes.Circle(r=2.5, center=(-6,0))
     circ2 = shapes.Circle(r=2.5, center=(0,0))
     circ3 = shapes.Circle(r=2.5, center=(6,0))
@@ -87,6 +87,6 @@ def calibrate(rasterstyle: raster_styles.RasterStyle) -> Callable[[float], int]:
     def repeats_for_depth(desired_depth):
         if a == 0:
             raise ValueError("Slope a is zero, cannot determine repeats.")
-        return desired_depth / a
+        return int(desired_depth / a)
 
     return repeats_for_depth
