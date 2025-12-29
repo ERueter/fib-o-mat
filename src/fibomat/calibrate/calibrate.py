@@ -7,7 +7,7 @@ import numpy as np
 import math
 from typing import Callable
 
-def calibrate(rasterstyle: raster_styles.RasterStyle, mill_repeats: int = 1) -> Callable[[QuantityType], int]:
+def calibrate(rasterstyle: raster_styles.RasterStyle, mill_repeats: int = 1, max_dwelltime=10*Q_('µs')) -> Callable[[QuantityType], int]:
     """
     Docstring for calibrate
     
@@ -15,8 +15,11 @@ def calibrate(rasterstyle: raster_styles.RasterStyle, mill_repeats: int = 1) -> 
     :type rasterstyle: raster_styles.RasterStyle
     :param mill_repeats: The number of repeats the mill performs per stream file repeat.
     :type mill_repeats: int
+    :param max_dwelltime: The dwell time of the mill to be used for calibrating
     :return: A function that takes the desired depth in length units and returns the number of stream file repeats needed.
     :rtype: Callable[[QuantityType], int]
+
+    Calculates how deep 
     """
     print("In this calibration we will determine how much material is removed per given time.")
     print("Please set the microscope to the current and voltage you are intending to use. See documentation for examples.")
@@ -26,7 +29,7 @@ def calibrate(rasterstyle: raster_styles.RasterStyle, mill_repeats: int = 1) -> 
         dim_position=(0, 0) * U_('µm'), dim_fov=(20, 20) * U_('µm')
     )
 
-    mill = Mill(10*Q_("µs"), repeats=mill_repeats)
+    mill = Mill(max_dwelltime, repeats=mill_repeats)
     circ1 = shapes.Circle(r=2.5, center=(-6,0))
     circ2 = shapes.Circle(r=2.5, center=(0,0))
     circ3 = shapes.Circle(r=2.5, center=(6,0))
