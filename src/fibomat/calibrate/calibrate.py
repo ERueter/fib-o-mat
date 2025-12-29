@@ -4,9 +4,20 @@ from fibomat.units import QuantityType, scale_to
 from fibomat.default_backends.fei import FEIStreamFile
 import os
 import numpy as np
+import math
 from typing import Callable
 
-def calibrate(rasterstyle: raster_styles.RasterStyle) -> Callable[[float], int]:
+def calibrate(rasterstyle: raster_styles.RasterStyle, mill_repeats: int = 1) -> Callable[[QuantityType], int]:
+    """
+    Docstring for calibrate
+    
+    :param rasterstyle: The same rasterstyle that shall be used in milling
+    :type rasterstyle: raster_styles.RasterStyle
+    :param mill_repeats: The number of repeats the mill performs per stream file repeat.
+    :type mill_repeats: int
+    :return: A function that takes the desired depth in length units and returns the number of stream file repeats needed.
+    :rtype: Callable[[QuantityType], int]
+    """
     print("In this calibration we will determine how much material is removed per given time.")
     print("Please set the microscope to the current and voltage you are intending to use. See documentation for examples.")
 
@@ -15,7 +26,7 @@ def calibrate(rasterstyle: raster_styles.RasterStyle) -> Callable[[float], int]:
         dim_position=(0, 0) * U_('µm'), dim_fov=(20, 20) * U_('µm')
     )
 
-    mill = Mill(10*Q_("µs"), repeats=1)
+    mill = Mill(10*Q_("µs"), repeats=mill_repeats)
     circ1 = shapes.Circle(r=2.5, center=(-6,0))
     circ2 = shapes.Circle(r=2.5, center=(0,0))
     circ3 = shapes.Circle(r=2.5, center=(6,0))
@@ -63,21 +74,22 @@ def calibrate(rasterstyle: raster_styles.RasterStyle) -> Callable[[float], int]:
     depth100 = float(input("Enter depth of the 100-repeat circle in µm: "))
     depth250 = float(input("Enter depth of the 250-repeat circle in µm: "))
 
-    # Assume linear relationship through origin: depth = a * repeats (b=0)
-    repeats = np.array([10, 100, 250])
+    # Assume linear relationship through origin: depth = a * (n_rep * mill_repeats)
+    n_reps = np.array([10, 100, 250])
+    effective_repeats = n_reps * mill_repeats
     depths = np.array([depth10, depth100, depth250])
     
     # Calculate slope a for line through origin
-    a = np.sum(depths * repeats) / np.sum(repeats**2)
+    a = np.sum(depths * effective_repeats) / np.sum(effective_repeats**2)
     b = 0  # Forced to pass through (0,0)
     
     # Calculate R² to check goodness of fit (for regression through origin)
-    predicted = a * repeats
+    predicted = a * effective_repeats
     ss_res = np.sum((depths - predicted)**2)
     ss_tot = np.sum(depths**2)
     r_squared = 1 - (ss_res / ss_tot) if ss_tot != 0 else 0
     
-    print(f"Linear relationship through origin: depth = {a:.6f} * repeats [µm]")
+    print(f"Linear relationship through origin: depth = {a:.6f} * (n_rep * mill_repeats) [µm]")
     print(f"Goodness of fit (R²): {r_squared:.4f}")
     
     if r_squared < 0.9:
@@ -87,7 +99,9 @@ def calibrate(rasterstyle: raster_styles.RasterStyle) -> Callable[[float], int]:
     def repeats_for_depth(desired_depth: QuantityType):
         if a == 0:
             raise ValueError("Slope a is zero, cannot determine repeats.")
-        depth_µm = scale_to(Q_('µm'),desired_depth)
-        return int(depth_μm / a)
+        depth_µm = scale_to(Q_('µm'), desired_depth)
+        total_effective_repeats_needed = depth_µm / a
+        streamfile_repeats = math.ceil(total_effective_repeats_needed / mill_repeats)
+        return streamfile_repeats
 
     return repeats_for_depth
