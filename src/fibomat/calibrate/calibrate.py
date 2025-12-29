@@ -1,6 +1,6 @@
 from fibomat import Sample, U_, Mill, Q_, DDDMill, SILMill, MatrixMill, MillBase
 from fibomat import shapes, raster_styles
-from fibomat.units import QuantityType
+from fibomat.units import QuantityType, scale_to
 from fibomat.default_backends.fei import FEIStreamFile
 import os
 import numpy as np
@@ -83,10 +83,11 @@ def calibrate(rasterstyle: raster_styles.RasterStyle) -> Callable[[float], int]:
     if r_squared < 0.9:
         print("Warning: The linearity assumption fits poorly (R² < 0.9). Consider using a non-linear model or checking your measurements.")
     
-    # Function to calculate repeats for a given depth TODO add units
-    def repeats_for_depth(desired_depth):
+    # Function to calculate repeats for a given depth
+    def repeats_for_depth(desired_depth: QuantityType):
         if a == 0:
             raise ValueError("Slope a is zero, cannot determine repeats.")
-        return int(desired_depth / a)
+        depth_µm = scale_to(Q_('µm'),desired_depth)
+        return int(depth_μm / a)
 
     return repeats_for_depth
