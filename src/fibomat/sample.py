@@ -253,3 +253,6 @@ class Sample(Describable):
             None
         """
         self._annotations.append(_Annotation(dim_shape=dim_shape, filled=filled, color=color, description=description))
+
+    def empty_sites(self):
+        self._sites = []
