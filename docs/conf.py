@@ -18,11 +18,11 @@ from sphinx.util import logging
 from sphinx.ext.napoleon import GoogleDocstring
 
 from bokeh.application.handlers.code_runner import CodeRunner
-from bokeh.sphinxext.example_handler import ExampleHandler
+from bokeh.sphinxext.bokeh_plot import ExampleHandler
 from bokeh.model import Model
 from bokeh.document import Document
 from bokeh.embed import autoload_static
-from bokeh.sphinxext.util import get_sphinx_resources
+from bokeh.sphinxext.bokeh_plot import get_sphinx_resources
 
 
 # monkey patch napoleon internal to render custom tags properly
@@ -49,7 +49,7 @@ GoogleDocstring._parse_generic_section = mp_parse_generic_section
 
 # monkey patch bokeh-plots to allow to pass an hint in argv that a script is during sphinx build
 def new_init(self, source, filename):
-    super(ExampleHandler, self).__init__(self)
+    super(ExampleHandler, self).__init__()
     self._runner = CodeRunner(source, filename, ['sphinx-build'])
 
 ExampleHandler.__init__ = new_init
@@ -73,7 +73,7 @@ class CustomBokehPlotDirective(Directive):
         def _process_script(source, filename, env, js_name, use_relative_paths=False):
             # Explicitly make sure old extensions are not included until a better
             # automatic mechanism is available
-            Model._clear_extensions()
+            Model.clear_extensions()
 
             run_source = source
 
@@ -129,7 +129,9 @@ class CustomBokehPlotDirective(Directive):
             (script, js, js_path, source) = _process_script(source, path, env, js_name)
         except Exception as e:
             raise RuntimeError(f"Sphinx bokeh-plot exception: \n\n{e}\n\n Failed on:\n\n {source}") from e
-        env.bokeh_plot_files[js_name] = (script, js, js_path, source, dirname(env.docname))
+        if not hasattr(env, 'bokeh_plot_files') or not isinstance(env.bokeh_plot_files, dict):
+            env.bokeh_plot_files = {}
+        # env.bokeh_plot_files[js_name] = (script, js, js_path, source, dirname(env.docname))
 
         # use the source file name to construct a friendly target_id
         target_id = f"{env.docname}.{basename(js_path)}"
@@ -161,7 +163,7 @@ except ImportError:
     from sphinx import apidoc
 
 output_dir = os.path.join(__location__, "reference")
-module_dir = os.path.join(__location__, "../fibomat")
+module_dir = os.path.join(__location__, "../src/fibomat")
 try:
     shutil.rmtree(output_dir)
 except FileNotFoundError:
@@ -184,7 +186,7 @@ except Exception as e:
 
 
 
-import fibomat
+#import fibomat
 
 # If your documentation needs a minimal Sphinx version, state it here.
 needs_sphinx = '3.0'
@@ -232,7 +234,7 @@ master_doc = 'index'
 project = u'fibomat'
 copyright = u'2020 fib-o-mat Contributors'
 
-exclude_patterns = ['_build']
+exclude_patterns = ['_build', 'examples/text.py', 'examples/text_positioning.py'] # TODO no textsupport on python 3.12 yet in fibomat
 
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
@@ -241,7 +243,7 @@ pygments_style = 'sphinx'
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
-html_theme = 'pydata_sphinx_theme'
+html_theme = 'classic' # pydata_sphinx_theme
 
 try:
     from fibomat import __version__ as version
