@@ -2,7 +2,7 @@ from typing import Optional
 
 import numpy as np
 
-import pyhershey
+import pyhershey # TODO pyhershey is not compatible with python 3.12 and never got updated.
 
 from fibomat.shapes.polyline import Polyline
 from fibomat.shapes.polygon import Polygon
