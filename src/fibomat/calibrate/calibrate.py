@@ -7,7 +7,7 @@ import numpy as np
 import math
 from typing import Callable
 
-def calibrate(rasterstyle: raster_styles.RasterStyle, mill_repeats: int = 1, max_dwelltime=10*Q_('µs')) -> Callable[[QuantityType], int]:
+def calibrate(rasterstyle: raster_styles.RasterStyle, mill_repeats: int = 1, max_dwelltime=10*Q_('µs')): #-> [float, Callable[[QuantityType], int]]:
     """
     Docstring for calibrate
     
@@ -107,4 +107,4 @@ def calibrate(rasterstyle: raster_styles.RasterStyle, mill_repeats: int = 1, max
         streamfile_repeats = math.ceil(total_effective_repeats_needed / mill_repeats)
         return streamfile_repeats
 
-    return repeats_for_depth
+    return a, repeats_for_depth
