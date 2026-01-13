@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   xmlns:dc="http://purl.org/dc/elements/1.1/"
+   xmlns:cc="http://creativecommons.org/ns#"
+   xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+   xmlns:svg="http://www.w3.org/2000/svg"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
+   width="100mm"
+   height="18.801277mm"
+   viewBox="0 0 100 18.801277"
+   version="1.1"
+   id="svg8"
+   inkscape:version="0.92.4 5da689c313, 2019-01-14"
+   sodipodi:docname="fibomat.svg"
+   inkscape:export-filename="/home/yorgo/Documents/HZB/fib-o-mat/logo/fibomat.png"
+   inkscape:export-xdpi="300"
+   inkscape:export-ydpi="300">
+  <defs
+     id="defs2" />
+  <sodipodi:namedview
+     id="base"
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1.0"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:zoom="1.4"
+     inkscape:cx="416.301"
+     inkscape:cy="-111.00397"
+     inkscape:document-units="mm"
+     inkscape:current-layer="layer1"
+     showgrid="false"
+     inkscape:window-width="2558"
+     inkscape:window-height="1404"
+     inkscape:window-x="0"
+     inkscape:window-y="34"
+     inkscape:window-maximized="0"
+     fit-margin-top="0"
+     fit-margin-left="0"
+     fit-margin-right="0"
+     fit-margin-bottom="0" />
+  <metadata
+     id="metadata5">
+    <rdf:RDF>
+      <cc:Work
+         rdf:about="">
+        <dc:format>image/svg+xml</dc:format>
+        <dc:type
+           rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
+        <dc:title></dc:title>
+      </cc:Work>
+    </rdf:RDF>
+  </metadata>
+  <g
+     inkscape:label="Layer 1"
+     inkscape:groupmode="layer"
+     id="layer1"
+     transform="translate(-9.5898198,-13.36692)">
+    <flowRoot
+       xml:space="preserve"
+       id="flowRoot815"
+       style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-size:40px;line-height:1.25;font-family:GrutchShaded;-inkscape-font-specification:GrutchShaded;letter-spacing:0px;word-spacing:0px;fill:#000000;fill-opacity:1;stroke:none"><flowRegion
+         id="flowRegion817"
+         style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:GrutchShaded;-inkscape-font-specification:GrutchShaded"><rect
+           id="rect819"
+           width="617.14288"
+           height="220"
+           x="68.571426"
+           y="262.51968"
+           style="font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;font-family:GrutchShaded;-inkscape-font-specification:GrutchShaded" /></flowRegion><flowPara
+         id="flowPara821" /></flowRoot>    <flowRoot
+       xml:space="preserve"
+       id="flowRoot823"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Archistico;-inkscape-font-specification:'Archistico Bold';letter-spacing:0px;word-spacing:0px;fill:#0d3268;fill-opacity:1;stroke:none"
+       transform="matrix(1.0929883,0,0,1.0929883,-82.823271,-400.81687)"><flowRegion
+         id="flowRegion825"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:Archistico;-inkscape-font-specification:'Archistico Bold';fill:#0d3268;fill-opacity:1"><rect
+           id="rect827"
+           width="505.71429"
+           height="174.28572"
+           x="85.714287"
+           y="311.09113"
+           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:Archistico;-inkscape-font-specification:'Archistico Bold';fill:#0d3268;fill-opacity:1" /></flowRegion><flowPara
+         id="flowPara829">fib-o-mat</flowPara></flowRoot>    <flowRoot
+       xml:space="preserve"
+       id="flowRoot823-3"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:40px;line-height:1.25;font-family:Archistico;-inkscape-font-specification:'Archistico Bold';letter-spacing:0px;word-spacing:0px;fill:#0d3268;fill-opacity:1;stroke:none"
+       transform="matrix(0.5723123,0,0,0.5723123,-39.534517,-168.86257)"><flowRegion
+         id="flowRegion825-5"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:Archistico;-inkscape-font-specification:'Archistico Bold';fill:#0d3268;fill-opacity:1"><rect
+           id="rect827-6"
+           width="505.71429"
+           height="174.28572"
+           x="85.714287"
+           y="311.09113"
+           style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:Archistico;-inkscape-font-specification:'Archistico Bold';fill:#0d3268;fill-opacity:1" /></flowRegion><flowPara
+         id="flowPara829-2"
+         style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-family:GrutchShaded;-inkscape-font-specification:'GrutchShaded Bold';fill:#081a35;fill-opacity:1">fib-o-mat</flowPara></flowRoot>  </g>
+</svg>
