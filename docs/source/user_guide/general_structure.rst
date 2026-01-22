@@ -1,7 +1,7 @@
 General structure
 =================
 
-The base and root o all other objects in th fib-o-mat package is the :class:`~fibomat.sample.Sample` class.
+The base and root of all other objects in the fib-o-mat package is the :class:`~fibomat.sample.Sample` class.
 All other objects are added directly or indirectly to an instance of this class.
 
 To a sample, :class:`~fibomat.site.Site` objects can be added. Sites have a
