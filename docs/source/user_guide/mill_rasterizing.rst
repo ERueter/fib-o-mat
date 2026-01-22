@@ -12,72 +12,70 @@ In a pattern, the following pieces of information are collected:
 
 Defining a mill
 ---------------
-In the most simple case, the :class:`~fibomat.mill.mill.Mill` takes the patterning current and the number of total repeats of a shape as attributes. ::
+The milling behaviour for a pattern is specified by a ``Mill`` object. The current implementation provides several related classes in
+``fibomat.mill.mill``:
+
+- ``Mill`` — simple, constant dwell time per spot and number of repeats
+- ``DDDMill`` — base for a dwell-time-per-point function and repeats (used for position-dependent dwell)
+- ``MatrixMill`` — use a 2D dwell-time matrix (image) as a rasterized dwell map
+- ``SpecialMill`` — lightweight container for custom/back-end specific parameters
+-  ``SILMill`` — example customized mill for fabrication of solid immersion lenses
+
+Simple constant dwell time
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+For a fixed dwell time per spot, create a ``Mill`` with a quantity and an integer number of repeats::
 
     from fibomat import Mill, Q_
 
-    mill = Mill(current=Q_('1 pA'), repeats=5)
+    mill = Mill(dwell_time=Q_('1 microsecond'), repeats=1)
 
-|:test_tube:| Providing custom parameters to a mill object
-++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Note that ``Mill`` stores the dwell-time as a (constant) function internally (it subclasses ``DDDMill``). If only milling one pattern, normally ``repeats`` will be 1 and multiple repeats of the milling process will instead be marked in the exported file in the end.
 
-This can be useful in combination with a custom exporting or custom rasterization styles.
+Position-dependent dwell (DDDMill)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If the dwell time depends on the physical location, use a ``DDDMill``-style object which holds a function
+``dwell_time(point: np.ndarray) -> Quantity`` and an integer ``repeats``. The provided ``Mill`` above is a convenience
+wrapper that builds a constant function for you. You can also subclass or construct a ``DDDMill`` directly.
 
-In the extending section, an example is given.
+Example of a custom DDD mill (callable returns a pint quantity)::
 
+    def dwell_func(point):
+        x, y = point[0], point[1]
+        return Q_(max(0.1, 1.0 - (x**2 + y**2)), 'microsecond')
 
-..    The mill object can also store custom settings. To add them to a Mill object, use the :meth:`~fibomat.mill.Mill.special_mill` classmethod.
-    In addition to the current and number of repeats, arbitrary other parameters can be passed to the Mill object. These are stored in the class an can be accessed in custom patterning backend (REF) for example. ::
-
-..        special_mill = Mill.special_mill(current=Q_('1 pA'), repeats=5, use_flood_gun=True, defocus=20)
-
-..        # ...
-
-..        # access the extra parameters at a later point
-..        print(special_mill.use_flood_gun)
-        print(special_mill.defocus)
-
-..    The example above illustrates how extra parameters can be passed and retrieved at a later stage (in this case the parameters 'use_flood_gun' and 'defocus').
-
-..    .. note:: All current implemented backends in fib-o-mat ignore all extra parameters.
-
-..    |:test_tube:| Defining an ion beam shape
-  ++++++++++++++++++++++++++++++++++++++++
-
-    For dose calculation or the :func:`~fibomat.optimize.optimize` routine for example, the beam shape must be known.
-    For this, the fib-o-mat package provides the :class:`~fibomat.mill.ionbeam.GaussBeam` class. As the name indicates, this class describes the ion beam with a Gaussian shape. In the extending fib-o-mat section (REF) it is explained, how a custom beam profile is defined.
-
-    A GaussianBeam is defined by the full-width-half-maximum beam width and the total beam current. ::
-
-        from fibomat import mill
-
-        beam = mill.GaussBeam(fwhm=Q_('3 nm'), current=Q_('1 pA'))
-
-    The GaussianBeam class provides some utility methods which are explained in the code snipped below ::
-
-        # returns the standard deviation of the distribution
-        print(beam.std)
-
-        # Calculate the ion flux at position (0, 0) µm with spots at (-1, 0), (0, 0), (1, 0) µm
-        # hence the influence of surrounding spots of the spot at (0, 0) is calculated.
-        print(beam.flux_at(
-            (0, 0),
-            [(-1, 0), (0, 0), (1, 0)],
-            U_('µm')
-        ))
-
-        # Calculate the ion flux of a single, isolated spot.
-        # this is the same as calling beam.flux_at((0, 0), (0, 0), U_('µm'))
-        print(beam.nominal_flux_per_spot())
-
-        # Calculate the ion flux of a spot on line with pitch 1 nm
-        print(beam.nominal_flux_per_spot_on_line(Q_('1nm))
-
-        # Calculate the ion flux of a spot on rectangle with pitches 1 nm, 1 nm in x and y directions, respectively.
-        print(beam.nominal_flux_per_spot_in_rect(Q_('1nm), Q_('1nm))
+    from fibomat.mill.mill import DDDMill
+    custom = DDDMill(dwell_time=dwell_func, repeats=1)
 
 
-    The ``nominal_flux_*`` methods can be used to calculate a nominal flux to be used in the optimization routine (see below here REF) or to calculate the ion dose on the regular rasterized line/grid.
+Matrix-based dwell map: ``MatrixMill``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``MatrixMill`` allows supplying a 2D numpy array of dwell values (e.g. from an image) together with a pixel size ``dx``
+and an ``origin``. It converts a point (x, y) to matrix indices and returns the corresponding dwell as a pint quantity.
+
+.. warning:: ``MatrixMill`` is still under development and not yet fully supported.
+
+Extra/back-end parameters (SpecialMill)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If you need to bundle arbitrary extra parameters for a back-end, use ``SpecialMill`` which is a small container built on
+``MillBase``. Customized ack-ends may choose to read these attributes but note that built-in back-ends probably won't work with this mill.
+
+Use-case specific: ``SILMill``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+``SILMill`` is a specialised DDDMill that implements a radial dwell profile for a SIL geometry. Find documentation on usage in :doc:`../use_cases/sil_mill_guide` .
+
+Defining an ion beam shape
+--------------------------
+For dose calculations or optimization routines the beam shape is required. The package provides ion beam descriptions
+under ``fibomat.mill.ionbeam`` (for example ``GaussBeam``). A Gaussian beam is constructed from a full-width-half-maximum
+and a current::
+
+    from fibomat import Q_
+    from fibomat.mill import ionbeam
+
+    beam = ionbeam.GaussBeam(fwhm=Q_('3 nm'), current=Q_('1 pA'))
+
+The beam classes provide helper methods such as ``std``, ``flux_at`` and the various ``nominal_flux_*`` convenience methods
+used for dose/optimization estimates.
 
 
 Specifying the rasterization style
@@ -174,6 +172,14 @@ Hence, the 2-dim rasterization styles require also a 1-dim rasterization style a
 This style generate contour-parallel offsetted curves of the passed shape to rasterized it.
 
 .. |:test_tube:| To decrease the influence of artifacts due to offsetting, this rasterizing styles supports optimizing of the rasterized dwell points. See the use case :ref:`Plasmonic tetramer antennas based on single-crystalline gold flakes` for an usage example of the optimization process.
+
+:class:`~fibomat.raster_styles.two_d.spiral.Spiral` spiral rasterization
+**************************************************************************
+The spiral rasterstyle rasterizes a shape by taking the circumcircle of the shape's bounding box, then filling this circle with an archimedian spiral and rasterizing this spiral as a 1-dim shape. This style expects two pitch-parameters: The pitch determines with what pitch the spiral should be rasterized, the spiral pitch determines how dense the spiral arms are supposed to be. Furthermore the user can decide in which direction the spiral shall be rasterized: From the inside to the outside, in reverse direction, or from inside to outside and then back in the reversed sense. See :doc:`../use_cases/sil_mill_guide` for an example. 
+.. note:: The spiral rasterstyle is still under development and so far, no matter which scan style the user passes over, the consecutive scan is used. Also there might be problems with complex shapes, eg. shapes with holes. Please report errors via git issue.
+
+
+
 
 
 Examples:
