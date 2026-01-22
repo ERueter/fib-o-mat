@@ -15,7 +15,10 @@ Of course, both approaches can be combined.
 
 All sections marked with a test tube |:test_tube:| describe advanced features of the package which may be skipped on first usage.
 
-.. warning:: Currently, fib-o-mat only contains exporting backends for a few microscope software packages. Support for other systems must be added by the user and is explained :ref:`here <user_guide/extending:extending fib-o-mat>`. Even so, the provided backends can easily be modified to support common microscopes.
+
+.. warning:: Currently, fibomat does not contain specific exporting backend to generate readable files for all microscopes. This must
+             be added by the user and is explained :ref:`somewhere else <user_guide/extending:extending fib-o-mat>`.
+             Even so, the provided backends can be easily modified to support common microscopes.
 
 .. warning:: Some parts of the user guide are still missing and will be added soon.
 
