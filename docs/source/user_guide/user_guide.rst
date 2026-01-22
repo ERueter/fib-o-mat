@@ -42,6 +42,7 @@ All sections marked with a test tube |:test_tube:| describe advanced features of
     General structure <general_structure>
     Geometric shapes <geometric-shapes>
     Mill & rasterizing settings <mill_rasterizing>
+    Calibration <calibration>
     Exporting & visualization <exporting_visualization>
     Grouping & arranging <grouping_arranging>
     Extending fib-o-mat <extending>
