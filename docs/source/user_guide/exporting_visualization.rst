@@ -15,7 +15,7 @@ To get started with exporting, see the examples below. Further details on export
 
 Exporting microscope readable output
 ------------------------------------
-Currently, the fib-o-mat package includes only one backend to generate microscope readable/specific output. This generic backend can be used to export rasterized patterns. This backend is highly adaptiv as demonstrated below.
+Currently, the fib-o-mat package includes only two backends to generate microscope readable/specific output. First, the generic backend can be used to export rasterized patterns. This backend is highly adaptiv as demonstrated below.
 
 See the extending fib-o-mat section REF for an example how to write a custom exporting backend from scratch.
 
@@ -78,6 +78,24 @@ This will generate a file with the following content
 
 This output is most likely not tremendous useful besides using it to visualize the rasterized data in the
 :ref:`ion bam simulation tool <Ion beam simulation>`.
+
+The second backend :class:`~fibomat.default_backends.fei.FEIStreamFile` produces streamfiles tailored to a specific microscope (TODO name) with the following format:
+
+.. code-block:: none
+
+    s16,25ns
+    Number of Points in File
+    Number of times the microscope shall repeat the file
+    t1 x1 y1
+    ...
+That is, the dwell times are automatically converted to units of 25 ns. The field of view gets included in the filename. The number of repeats as well as a margin (the ratio of the field of view that should be filled by the pattern) have to be handed over as a parameter.
+
+::
+    # Export to FEI stream file
+    exported = site.export(FEIStreamFile, n_rep=684, margin=0.76)
+    exported.save('sil_pattern.str')
+
+.. note:: The FEIStream backend is still under development and has some bugs left, for example it causes errors if the bounding box of the shape is not twodimensional.
 
 Customize output format
 +++++++++++++++++++++++
@@ -216,7 +234,7 @@ Generating interactive plots
 
 fib-o-mat ships with a default plotting backend. This backend is based on the `bokeh <https://bokeh.org/>`__ library.
 The backend generates an interactive html file viewable in any modern browser. This file does not depend on the fib-o-mat
-python package. Hence, it can be distributed and used easily without any python dependenciess.
+python package. Hence, it can be distributed and used easily without any python dependencies.
 
 Plots can be generated via the :meth:`~fibomat.sample.Sample.plot` method of the :class:`~fibomat.sample.Sample` class.
 The plotting can be configured with the following parameters:
@@ -227,6 +245,7 @@ The plotting can be configured with the following parameters:
     * ``title``: title of the plot, by default ``Sample.description``
     * ``hide_sites``: if True, :class:`~fibomat.site.Sites`\ s are not shown in the plot, by default False
     * ``rasterize_pitch``: the pitch used to rasterize all plotting data to polylines, by default ``Q_('0.01 µm')``
+    * ``plot_rasterized``: if True, the pattern will be rasterized using the pattern's rasterstyle and the resulting points are plotted.
     * ``legend``: if True, a legend with all sites as entries is shown, by default True
     * ``cycle_colors``: if True, each site and all its shapes will get a different color, by default True
 
@@ -276,7 +295,7 @@ The tool can can be run from the command line with ::
 
     $ beam_simulation path/to/the/exported/file.txt
 
-This works only, if the python binary directory is in the PATH variable, e.g. if a virtual environment is used.
+This works only if the python binary directory is in the PATH variable, e.g. if a virtual environment is used.
 
 For better visualization, the beam is shown with a tail. The animation speed can be changed manually to adapt for different dwell point densities. The dwell time of the points is ignored.
 
