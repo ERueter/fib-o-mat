@@ -23,7 +23,7 @@ fib-o-mat is by designed flexible and easily expandable. Hence, adding support f
 For the usage of fib-o-mat, basic python knowledge and good understanding of the target microscope are mandatory.
 See :ref:`getting_started:getting started` for an introduction to this library and the :ref:`user_guide/user_guide:user guide` for a complete documentation. The module reference is to be found :ref:`here <reference/modules:fibomat>`.
 
-Please use the `issue system on gitlab <https://gitlab.com/viggge/fib-o-mat/-/issues>`__ for bug reports and questions concerning the package.
+Please use the `issue system on github <https://github.com/fib-o-mat/fib-o-mat>`__ for bug reports and questions concerning the package.
 
 Made with |:black_heart:| and |:coffee:| at `HZB <https://www.helmholtz-berlin.de/>`__ and `FBH <https://www.fbh-berlin.de/en/>`__ in Berlin.
 
