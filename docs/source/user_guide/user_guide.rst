@@ -26,7 +26,7 @@ Of course, both approaches can be combined, too.
 All sections marked with a test tube |:test_tube:| describe advanced features of the package which may be skipped on first usage.
 
 
-.. warning:: Currently, fibomat does not contain specific exporting backend to generate microscope readable files. This must
+.. warning:: Currently, fibomat does not contain specific exporting backend to generate readable files for all microscopes. This must
              be added by the user and is explained :ref:`somewhere else <user_guide/extending:extending fib-o-mat>`.
              Even so, the provided backends can be easily modified to support common microscopes.
 
