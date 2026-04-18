@@ -248,11 +248,40 @@ def preprocess_Z(Z, config: ProcessConfig, verbose=False):
     return Z_blur
 
 
-def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10):
+def compute_slice_target(Z_target, Z_current, dz, slice_idx, num_slices, slice_mode="residual"):
+    """
+    Compute the target removal for a slice.
+
+    Parameters:
+        Z_target: final target depth matrix
+        Z_current: current accumulated depth matrix
+        dz: maximum depth per slice
+        slice_idx: current slice index (0-based)
+        num_slices: total number of slices
+        slice_mode: 'residual' or 'envelope'
+
+    The 'envelope' mode limits each point based on its own target depth
+    budget across the total number of slices. This prevents shallow points
+    from being removed too aggressively early.
+    """
+    if slice_mode == "residual":
+        return np.clip(Z_target - Z_current, 0, dz)
+
+    if slice_mode == "envelope":
+        if num_slices <= 0:
+            return np.zeros_like(Z_target)
+        envelope = Z_target * (slice_idx + 1) / num_slices
+        return np.clip(envelope - Z_current, 0, dz)
+
+    raise ValueError(f"Unknown slice_mode: {slice_mode}")
+
+
+def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10, slice_mode="residual", record_surface_history=False):
     
     n = config.n
     Z_current = np.zeros_like(Z_target, dtype=float)
     dwell_maps = []
+    surface_history = []
     num_slices = int(np.ceil(Z_target.max() / dz))
 
     if verbose:
@@ -260,7 +289,7 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
 
     for s in range(num_slices):
         # targeted slice depth
-        D_slice = np.clip(Z_target - Z_current, 0, dz)
+        D_slice = compute_slice_target(Z_target, Z_current, dz, s, num_slices, slice_mode=slice_mode)
         if np.all(D_slice == 0):
             if verbose: print("Target profile reached.")
             break
@@ -296,6 +325,8 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
         # Update Surface
         Z_delta = ((config.f_xy / config.h) * fftconvolve(t_refined.reshape(n,n), config.K, mode='same')) * S_theta
         Z_current += Z_delta
+        if record_surface_history:
+            surface_history.append(Z_current.copy())
 
         if verbose and (s % plot_every == 0 or s == num_slices-1):
 
@@ -350,7 +381,47 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
             plt.tight_layout()
             plt.show()
 
+    if record_surface_history:
+        return Z_current, dwell_maps, surface_history
     return Z_current, dwell_maps
+
+
+def plot_surface_history(Z_history, Z_target, config, axis='x'):
+    """
+    Plot the accumulated surface profile after each slice.
+
+    This shows the overall milled shape at the end of each slice,
+    rather than the incremental slice contribution.
+    """
+    if len(Z_history) == 0:
+        raise ValueError("Z_history must contain at least one surface snapshot.")
+
+    n = Z_target.shape[0]
+    center_idx = n // 2
+    x_axis = np.arange(n) * config.dx * 1e6  # µm
+    target_cut = Z_target[center_idx, :] * 1e9  # nm
+
+    fig, ax = plt.subplots(figsize=(8, 6))
+    cmap = plt.get_cmap("viridis")
+    colors = cmap(np.linspace(0, 1, len(Z_history)))
+
+    for k, Z in enumerate(Z_history):
+        cut = Z[center_idx, :] * 1e9
+        alpha = 0.2 if len(Z_history) > 10 else 0.6
+        linewidth = 1.0 if k not in [0, len(Z_history)//2, len(Z_history)-1] else 2.0
+        label = None
+        if k in [0, len(Z_history)//2, len(Z_history)-1]:
+            label = f"slice {k+1}/{len(Z_history)}"
+        ax.plot(x_axis, cut, color=colors[k], alpha=alpha, linewidth=linewidth, label=label)
+
+    ax.plot(x_axis, target_cut, color="black", linewidth=2.5, linestyle="-", label="Target profile")
+    ax.set_xlabel("x-Position [µm]")
+    ax.set_ylabel("Depth [nm]")
+    ax.set_title("Accumulated Milled Shape after Each Slice")
+    ax.grid(True)
+    ax.legend(loc="upper right")
+    fig.tight_layout()
+    plt.show()
 
 
 def evaluate_accuracy(Z_target, Z_final, dwell_maps, config):

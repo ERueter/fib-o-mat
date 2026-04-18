@@ -11,29 +11,187 @@ from scipy.signal import fftconvolve
 
 
 s = Sample()
-site = s.create_site(
-    dim_position=(0, 0) * U_('µm'), dim_fov=(20, 20) * U_('µm')
-)
 
+config = vas.ProcessConfig(use_numpy_grad=False)
+def postprocess(D_vec, t_clip, C_dot, CT_dot, n):
+    return t_clip
 
-mill = SILMill(radius_sil=3953*U_('nm'),radius=7370*U_('nm'), min_dwell_time=0.1)  # arbeitet in µs
+# TODO Frage an Katja: Die sil mit maxdwell-time 10 zu machen und dann einfach sehr oft zu millen müsste eigentlich in falscher shape resultieren?
+silmill = SILMill(radius_sil=3953*U_('nm'),radius=7370*U_('nm'), min_dwell_time=0.1)  # arbeitet in µs
+
+radius_sil=silmill._radius_sil
+radius=silmill._radius
+min_dwell_time=0.1
+max_dwell_time = 10
+
+def dwell_func(point: np.ndarray) -> QuantityType:
+    x, y = point[0], point[1]
+    dist_sq = x * x + y * y
+    dist = np.sqrt(dist_sq)
+
+    # Shift apex downward by 10% of SIL radius
+    z_shift = 0.30 * radius_sil
+
+    if dist < radius_sil:
+        # Original spherical cap term, shifted downward
+        sag = np.sqrt(radius_sil**2 - dist_sq)
+        depth = max_dwell_time - (max_dwell_time / radius_sil) * (sag - z_shift)
+
+    elif dist < radius:
+        # Keep outer taper continuous from SIL boundary
+        edge_depth = max_dwell_time - (max_dwell_time / radius_sil) * (
+            np.sqrt(radius_sil**2 - radius_sil**2) - z_shift
+        )
+        depth = edge_depth * (1 - (dist - radius_sil) / (radius - radius_sil))
+
+    else:
+        return Q_(0, "microsecond")
+
+    return Q_(max(depth, min_dwell_time), "microsecond")
+
+mill = DDDMill(dwell_func, 1)
+
 
 spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
-repeats_for_depth = calibrate.calibrate(rasterstyle=spiral_style)
+a, repeats_for_depth = calibrate.calibrate(rasterstyle=spiral_style)
 
 circ = shapes.Circle(r=7370, center=(0,0))
 
-site.create_pattern(
-    dim_shape=circ * U_('nm'),
-    mill=mill,
-    raster_style=spiral_style
-)
 
-target_depth = 7.3 # µm
-repeats = repeats_for_depth(7.3)
+target_depth = 7.3*U_('µm') # µm
+repeats = repeats_for_depth(target_depth)
 
 print(repeats)
+
+
+
+Z_target, dx = vas.get_target_from_mill(
+    mill=mill,
+    resolution=400,            # choose desired resolution of the target
+    fov=20 * U_('µm'),         # your site FOV
+    unit=U_("nm"),                 # eigentlich muss hier das site-unit stehen? #mill receives µm coordinates
+    verbose=True
+)
+
+# Skaliere Z_target so, dass der tiefste Punkt 7.3 µm entspricht
+max_Z = np.max(Z_target)
+r = a / 10 * 1e-6  # experimental milling rate in m/s (µm/µs * 1e-6)
+original_max_depth = r * max_Z  # original max depth in m
+scale = target_depth.magnitude / original_max_depth 
+Z_target = Z_target * scale
+
+Z_target *= 1e-6
+
+Z_target = config.f_xy / config.h * Z_target  # Z umrechnen von der ZEIT zu der TIEFE
+
+
+import matplotlib.pyplot as plt
+plt.figure(figsize=(6,5))
+plt.imshow(Z_target, cmap='viridis', origin='lower', interpolation='nearest')
+plt.colorbar(label="Target Depth [m]")
+plt.title("Generated SIL Target (from SILMill)")
+plt.show()
+print(f"Z_target skaliert mit Faktor {scale:.4f}, max Z_target: {np.max(Z_target):.2f} µs")
+
+dz = 0.5e-7  # tiefe pro Slice in m
+Z_blurred = vas.preprocess_Z(Z_target, config, verbose = False)
+Z_final, dwell_maps, surface_history = vas.process_full_target(
+    Z_target=Z_blurred,
+    dz=dz,
+    config=config,
+    postprocess=postprocess,
+    verbose=True,
+    slice_mode="envelope",
+    record_surface_history=True
+)
+
+vas.plot_surface_history(surface_history, Z_blurred, config)
+vas.evaluate_accuracy(Z_blurred, Z_final, dwell_maps, config)
+
+# save in current directory with filename simulation_results_sine
+np.savez("simulation_results_sil_from_mill.npz",
+         Z_final=Z_final,
+         dwell_maps=dwell_maps,
+         Z_target=Z_blurred)
+
+
+for i, dwell_map in enumerate(dwell_maps):
+    print(f"Layer {i}: max_d = {np.max(dwell_map):.2e} s, shape = {dwell_map.shape}")
+    max_d = np.max(dwell_map)
+    if max_d > 0:
+        scale = 10e-6 / max_d  # scale to max 10 µs
+        dwell_map_scaled = dwell_map * scale
+        n = int(np.sqrt(dwell_map_scaled.size))
+        dwell_map_scaled = dwell_map_scaled.reshape((n, n))
+        n_rep = int(np.ceil(max_d / 10e-6))
+        
+        """
+        # Plot original and scaled dwell maps
+        plt.figure(figsize=(12, 5))
+        plt.subplot(1, 2, 1)
+        plt.imshow(dwell_map.reshape((n, n)), cmap='viridis', origin='lower')
+        plt.colorbar(label='Dwell time (s)')
+        plt.title(f'Layer {i}: Original Dwell Map (max: {max_d:.2e} s)')
+        
+        plt.subplot(1, 2, 2)
+        plt.imshow(dwell_map_scaled, cmap='viridis', origin='lower')
+        plt.colorbar(label='Dwell time (s)')
+        plt.title(f'Layer {i}: Scaled Dwell Map (max: {np.max(dwell_map_scaled):.2e} s)')
+        plt.show()
+        """
+        
+    else:
+        print("bin im else-fall!")
+        dwell_map_scaled = np.zeros_like(dwell_map)  # ensure zeros
+        n = int(np.sqrt(dwell_map_scaled.size))
+        dwell_map_scaled = dwell_map_scaled.reshape((n, n))
+        n_rep = 0  # skip if zero
+    
+    origin = (-10, -10)  # TODO check how the origin has to look like
+    dwell_map_scaled *= 1e6  # convert to µs for MatrixMill TODO check this
+    layer_mill = MatrixMill(dwell_map_scaled, dx=0.05, origin=origin)
+    
+    """
+    # Sample from layer_mill for visualization
+    x = np.linspace(origin[0], origin[0] + n * 0.05, 100)
+    y = np.linspace(origin[1], origin[1] + n * 0.05, 100)
+    X, Y = np.meshgrid(x, y)
+    dwell_samples = np.zeros_like(X)
+    for i in range(X.shape[0]):
+        for j in range(X.shape[1]):
+            dwell_samples[i, j] = layer_mill.dwell_time(np.array([X[i, j], Y[i, j]])).to('second').magnitude
+    
+    plt.figure(figsize=(6, 5))
+    plt.imshow(dwell_samples, extent=[origin[0], origin[0] + n * 0.05, origin[1], origin[1] + n * 0.05], origin='lower', cmap='viridis')
+    plt.colorbar(label='Sampled Dwell time (s)')
+    plt.title(f'Layer {i}: Sampled from layer_mill')
+    plt.show()
+    """
+
+    
+    # Create a new site for each layer
+    layer_site = s.create_site(
+        dim_position=(0, 0) * U_('µm'), dim_fov=(20, 20) * U_('µm')
+    )
+
+    circ = shapes.Circle(r=7370, center=(0,0))  # warum auch immer es crasht, wenn derselbe Kreis mehrfach benutzt wird???
+    
+    layer_site.create_pattern(
+        dim_shape=circ * U_('nm'),
+        mill=layer_mill,
+        raster_style=spiral_style
+    )
+    
+    # TODO hier muss das sample exported werden, sites können nicht exportiert werden. einfach sites löschen oder so I guess.
+    #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
+    # plot von erster map sieht normal aus, das zweite ist nur ein Punkt!!!
+    exported = s.export(FEIStreamFile, n_rep=n_rep, margin=0.76) 
+    exported.save(f'sil-optimized-layer-{i}.str')
+    print(f"Layer {i}: max dwell {max_d:.2f} µs, scale {scale:.4f}, n_rep {n_rep}")
+    s.empty_sites()
+
+raise Exception("end of vasile test")
 
 print("Before export")
 exported = s.export(FEIStreamFile, n_rep=repeats, margin=0.76) 
@@ -109,7 +267,7 @@ plt.show()
 
 dz = 1e-6  # tiefe pro Slice in m
 Z_blurred = vas.preprocess_Z(Z_target, config, verbose = False)
-Z_final, dwell_maps = vas.process_full_target(Z_target=Z_blurred, dz=dz, config=config, postprocess=postprocess, verbose = False)
+Z_final, dwell_maps = vas.process_full_target(Z_target=Z_blurred, dz=dz, config=config, postprocess=postprocess, verbose=False, slice_mode="envelope")
 
 vas.evaluate_accuracy(Z_blurred, Z_final, dwell_maps, config)
 
