@@ -34,7 +34,8 @@ def calibrate(rasterstyle: raster_styles.RasterStyle, mill_repeats: int = 1, max
     circ2 = shapes.Circle(r=2.5, center=(0,0))
     circ3 = shapes.Circle(r=2.5, center=(6,0))
 
-    os.mkdir("calibration-files")
+    # os.mkdir("calibration-files")
+    os.makedirs("calibration-files", exist_ok=True)
 
     site.create_pattern(
         dim_shape=circ1 * U_('µm'),
