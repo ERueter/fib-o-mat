@@ -29,10 +29,10 @@ class ProcessConfig:
     sigma_smooth: Amount of smoothing to be applied to avoid numerical artefacts. 
     use_numpy_grad: If True, numpy.gradient is used instead of spectral gradient.
     """
-    n: int = 400
-    dx: float = 50e-9#0.025e-6 # eigentlich 20 nm
-    dy: float = 50e-9#0.025e-6
-    sigma: float = 400e-9#0.167e-6#0.2e-6 
+    n: int = 500#1000#400
+    dx: float = 20e-9#50e-9#0.025e-6 # eigentlich 20 nm
+    dy: float = 20e-9#50e-9#0.025e-6
+    sigma: float = 170e-9#400e-9#0.167e-6#0.2e-6  # 400 nm Halbwertsbreite
     h: float = 5e28 # lets try in m^3 #5e22 # atoms/cm^3
     f_xy: int = 1e23 #1e19 # ions/cm^2s ?   #np.array = np.ones((n, n), dtype=np.uint8) * 1e19 # TODO save memory here
     R: int = 3
@@ -259,6 +259,9 @@ def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
     cos_theta = 1.0 / np.sqrt(1.0 + dzdx**2 + dzdy**2)
     cos_theta = np.clip(cos_theta, 1e-3, 1.0)
     sput_yield = config.Y0 * (cos_theta**config.p) * np.exp(config.q*(1.0/cos_theta - 1.0))
+    print(dzdx.shape)
+    print(cos_theta.shape)
+    print(sput_yield.shape)
     if verbose:
         plt.imshow(sput_yield, "viridis")
         plt.title("Sputter Yield")
@@ -419,7 +422,7 @@ def fista_projected(
     return x
 
 
-def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10, slice_mode="residual", record_surface_history=False):
+def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10, slice_mode="residual", record_surface_history=False, total_passes=None):
     
     n = config.n
     Z_current = np.zeros_like(Z_target, dtype=float)
@@ -427,16 +430,36 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
     surface_history = []
     num_slices = int(np.ceil(Z_target.max() / dz))
 
+    if total_passes is not None:
+        passes_per_slice = total_passes // num_slices
+        extra_passes = total_passes % num_slices
+        if verbose:
+            print(f"Using total_passes={total_passes}: {passes_per_slice} passes per slice + 1 extra for first {extra_passes} slices")
+
     if verbose:
         print(f"Starting Slice-Simulation: {num_slices} Slices à {dz*1e9:.1f} nm")
 
     for s in range(num_slices):
+        repeat_count = 1
+        if total_passes is not None:
+            repeat_count = passes_per_slice + (1 if s < extra_passes else 0)
+            if repeat_count == 0:
+                if verbose:
+                    print(f"No remaining passes for slice {s+1}/{num_slices}; stopping.")
+                break
+
         # targeted slice depth
         D_slice = compute_slice_target(Z_target, Z_current, dz, s, num_slices, slice_mode=slice_mode)
         if np.all(D_slice == 0):
             if verbose: print("Target profile reached.")
             break
-        D_vec = D_slice.ravel()
+
+        if repeat_count > 1:
+            D_effective = D_slice / repeat_count
+        else:
+            D_effective = D_slice
+
+        D_vec = D_effective.ravel()
         
         scale = np.max(D_vec)
 
@@ -500,13 +523,12 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
         # Apply smoothing to dwell map using beam sigma for physical consistency
         t_clip = gaussian_filter(t_clip.reshape(n,n), sigma=config.sigma/config.dx).ravel()
 
-        t_refined = postprocess(D_vec, t_clip, C_dot, CT_dot, n)#smooth_iterative_refine(D_vec, t_clip, C_dot, CT_dot, n, lam=1e-3), None, None#fista_projected(D_vec, t_clip, L_est,C_dot, CT_dot,
-                         #              maxiter=maxiter, tol_dt=1e-8, verbose=False) # tol_dt=1e-8
+        t_refined = postprocess(D_vec, t_clip, C_dot, CT_dot, n)
         dwell_maps.append(t_refined)
 
         # Update Surface
         Z_delta = ((config.f_xy / config.h) * fftconvolve(t_refined.reshape(n,n), config.K, mode='same')) * S_theta
-        Z_current += Z_delta
+        Z_current += repeat_count * Z_delta
         if record_surface_history:
             surface_history.append(Z_current.copy())
 
