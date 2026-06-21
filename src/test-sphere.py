@@ -70,7 +70,7 @@ target_depth = 7.3*U_('µm') # µm
 
 Z_target, dx = vas.get_target_from_mill(
     mill=mill,
-    resolution=400,            # choose desired resolution of the target
+    resolution=config.n,            # choose desired resolution of the target
     fov=20 * U_('µm'),         # your site FOV
     unit=U_("nm"),                 # eigentlich muss hier das site-unit stehen? #mill receives µm coordinates
     verbose=True
