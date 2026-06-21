@@ -19,6 +19,8 @@ def postprocess(D_vec, t_clip, C_dot, CT_dot, n):
 # TODO Frage an Katja: Die sil mit maxdwell-time 10 zu machen und dann einfach sehr oft zu millen müsste eigentlich in falscher shape resultieren?
 silmill = SILMill(radius_sil=3953*U_('nm'),radius=7370*U_('nm'), min_dwell_time=0.1)  # arbeitet in µs
 
+# TODO silmill is larger than fov in vasile rn
+
 radius_sil=silmill._radius_sil
 radius=silmill._radius
 min_dwell_time=0.1
@@ -54,15 +56,15 @@ mill = DDDMill(dwell_func, 1)
 
 spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
-a, repeats_for_depth = calibrate.calibrate(rasterstyle=spiral_style)
+#a, repeats_for_depth = calibrate.calibrate(rasterstyle=spiral_style)
 
 circ = shapes.Circle(r=7370, center=(0,0))
 
 
 target_depth = 7.3*U_('µm') # µm
-repeats = repeats_for_depth(target_depth)
+#repeats = repeats_for_depth(target_depth)
 
-print(repeats)
+#print("repeats = " + str(repeats)) # 758 repeats = a mill with max-dwelltime 10 µs has to mill 758 times in total to reach depth 7.3 µm
 
 
 
@@ -74,27 +76,37 @@ Z_target, dx = vas.get_target_from_mill(
     verbose=True
 )
 
-# Skaliere Z_target so, dass der tiefste Punkt 7.3 µm entspricht
+# the Z_target from vas now basically just has the dwell-time at each point - so technically it is in µs, not in µm. 
+# we now basically use the mill to (by abuse of notation) encode a depth by just scaling it to the target depth.
+# so the mill just stored the shape for us, not the depth (the user has to know themself what depth they want)
+
 max_Z = np.max(Z_target)
-r = a / 10 * 1e-6  # experimental milling rate in m/s (µm/µs * 1e-6)
-original_max_depth = r * max_Z  # original max depth in m
-scale = target_depth.magnitude / original_max_depth 
-Z_target = Z_target * scale
+scale = target_depth.magnitude/max_Z
+Z_target = Z_target*scale # now Z_target has the targeted depth and is in units of target depth (though dimensionless stored for vas)
+Z_target *= 1e-6 # convert to [m] for vasile
 
-Z_target *= 1e-6
+if False:  # I believe this was bullshit?
+    # Skaliere Z_target so, dass der tiefste Punkt 7.3 µm entspricht
+    max_Z = np.max(Z_target)
+    r = a / 10 * 1e-6  # experimental milling rate in m/s (µm/µs * 1e-6)
+    original_max_depth = r * max_Z  # original max depth in m
+    scale = target_depth.magnitude / original_max_depth 
+    Z_target = Z_target * scale
 
-Z_target = config.f_xy / config.h * Z_target  # Z umrechnen von der ZEIT zu der TIEFE
+    Z_target *= 1e-6
+
+    Z_target = config.f_xy / config.h * Z_target  # Z umrechnen von der ZEIT zu der TIEFE
 
 
 import matplotlib.pyplot as plt
 plt.figure(figsize=(6,5))
 plt.imshow(Z_target, cmap='viridis', origin='lower', interpolation='nearest')
-plt.colorbar(label="Target Depth [m]")
+plt.colorbar(label=f"Target Depth [m]")
 plt.title("Generated SIL Target (from SILMill)")
 plt.show()
-print(f"Z_target skaliert mit Faktor {scale:.4f}, max Z_target: {np.max(Z_target):.2f} µs")
+#print(f"Z_target skaliert mit Faktor {scale:.4f}, max Z_target: {np.max(Z_target):.2f} µs")
 
-dz = 0.5e-7  # tiefe pro Slice in m
+dz = 250e-9 #7500 nm / 20 slices = 375e-9 250e-9 # 7500 nm /30 slices = 250 nm per slice #0.5e-7  # tiefe pro Slice in m, 
 Z_blurred = vas.preprocess_Z(Z_target, config, verbose = False)
 Z_final, dwell_maps, surface_history = vas.process_full_target(
     Z_target=Z_blurred,
