@@ -4,6 +4,7 @@ import matplotlib as mpl
 from scipy.signal import fftconvolve
 from scipy.ndimage import gaussian_filter
 from scipy.sparse.linalg import LinearOperator, lsqr
+from scipy.optimize import lsq_linear
 from dataclasses import dataclass, field
 from typing import Optional, Callable
 from fibomat.units import QuantityType, has_time_dim, has_length_dim, Q_, U_
@@ -29,20 +30,20 @@ class ProcessConfig:
     use_numpy_grad: If True, numpy.gradient is used instead of spectral gradient.
     """
     n: int = 400
-    dx: float = 0.025e-6
-    dy: float = 0.025e-6
-    sigma: float = 0.2e-6 
+    dx: float = 50e-9#0.025e-6 # eigentlich 20 nm
+    dy: float = 50e-9#0.025e-6
+    sigma: float = 400e-9#0.167e-6#0.2e-6 
     h: float = 5e28 # lets try in m^3 #5e22 # atoms/cm^3
-    f_xy: int = 1e21 #1e19 # ions/cm^2s ?   #np.array = np.ones((n, n), dtype=np.uint8) * 1e19 # TODO save memory here
+    f_xy: int = 1e23 #1e19 # ions/cm^2s ?   #np.array = np.ones((n, n), dtype=np.uint8) * 1e19 # TODO save memory here
     R: int = 3
-    Y0: float = 2.5
-    p: float = -0.5
-    q: float = 0.0
+    Y0: float = 0.8#2.5
+    p: float = -2.5#-0.5
+    q: float = -1#0.0
     sigma_smooth: float = 1.0
     use_numpy_grad: bool = True
 
     # optional inputs (created in __post_init__ when omitted)
-    f_xy: Optional[np.ndarray] = None
+    #f_xy: Optional[np.ndarray] = None
     K: Optional[np.ndarray] = None
 
     # derived fields (not passed to constructor)
@@ -52,7 +53,7 @@ class ProcessConfig:
     Xk: np.ndarray = field(init=False)
     Yk: np.ndarray = field(init=False)
 
-    def __post_init__(self):
+    def __post_init_old__(self):
         # ensure f_xy matches n if not provided
         if self.f_xy is None:
              self.f_xy = 1e19 #self.f_xy = np.ones((self.n, self.n), dtype=np.uint8) * 1e19
@@ -66,9 +67,47 @@ class ProcessConfig:
         # compute K if not provided
         if self.K is None:
             K = np.exp(-(self.Xk**2 + self.Yk**2) / (2 * self.sigma**2)) / (2 * np.pi * self.sigma**2)
-            K /= K.sum()
+            #K /= K.sum()
             K *= self.dx * self.dy
             self.K = K
+            print("sum over kernel k")
+            print(K.sum())
+            t_test = np.ones((self.n,self.n))
+            Z_test = ((self.f_xy / self.h) * fftconvolve(t_test, K)) * self.Y0
+
+            print(Z_test.mean())
+            #raise Exception("end of test")
+
+    def __post_init__(self):
+        # ensure f_xy matches n if not provided
+        print("using second postinit")
+        if self.f_xy is None:
+            self.f_xy = 1e19
+
+        # compute kernel support in pixels
+        self.rpx = int(np.ceil(self.R * self.sigma / self.dx))
+        self.xs = np.arange(-self.rpx, self.rpx + 1) * self.dx
+        self.ys = np.arange(-self.rpx, self.rpx + 1) * self.dy
+        self.Xk, self.Yk = np.meshgrid(self.xs, self.ys, indexing="xy")
+
+        # compute K if not provided
+        if self.K is None:
+            # Gaussian kernel
+            K = np.exp(-(self.Xk**2 + self.Yk**2) / (2 * self.sigma**2)) / (2 * np.pi * self.sigma**2)
+            K *= self.dx * self.dy
+
+            # circular cutoff mask
+            R_phys = self.R * self.sigma
+            mask = (self.Xk**2 + self.Yk**2) <= R_phys**2
+            K *= mask.astype(float)
+
+            self.K = K
+
+            print("sum over kernel K:", K.sum())
+            t_test = np.ones((self.n, self.n))
+            Z_test = ((self.f_xy / self.h) * fftconvolve(t_test, K)) * self.Y0
+            print("mean Z_test:", Z_test.mean())
+
 
 
 def compute_grad(Z, config: ProcessConfig, verbose=False):
@@ -87,19 +126,46 @@ def compute_grad(Z, config: ProcessConfig, verbose=False):
 
     """
     if config.sigma_smooth > 0:
-        Z = gaussian_filter(Z, sigma=config.sigma_smooth)
+        Z = gaussian_filter(Z, sigma=config.sigma/config.dx)
     if config.use_numpy_grad:
+        gradx = np.gradient(Z, config.dx, axis=1)
+        grady = np.gradient(Z, config.dy, axis=0)
         if verbose:
             print("numpy-Option was selected. For further analysis set numpy to False.")
-        return np.gradient(Z, config.dx, axis=1, dtype=float), np.gradient(Z, config.dy, axis=0, dtype=float)
+            fig, axs = plt.subplots(1, 2, figsize=(18, 12))
+            axs = axs.flatten()
+
+            # plot 
+            im0 = axs[0].imshow(gradx, origin="lower", cmap="viridis")
+            axs[0].set_title("dzdx")
+            fig.colorbar(im0, ax=axs[0])
+
+            # dzdy
+            im1 = axs[1].imshow(grady, origin="lower", cmap="viridis")
+            axs[1].set_title("dz/dy")
+            fig.colorbar(im1, ax=axs[1])
+            plt.tight_layout()
+            plt.show()
+
+        return gradx, grady
     n, m = Z.shape
     kx = np.fft.fftfreq(n, d=config.dx) * 2*np.pi
     ky = np.fft.fftfreq(m, d=config.dy) * 2*np.pi
+
+
     KX, KY = np.meshgrid(kx, ky, indexing="ij")
 
     Zk = np.fft.fft2(Z)
     dzdx = np.fft.ifft2(1j * KY * Zk).real
     dzdy = np.fft.ifft2(1j * KX * Zk).real
+
+    plt.imshow(dzdx**2 + dzdy**2)
+    plt.show()
+
+    if config.sigma_smooth > 0:
+        #dzdx = gaussian_filter(dzdx, sigma=config.sigma_smooth)
+        #dzdy = gaussian_filter(dzdy, sigma=config.sigma_smooth)
+        pass
 
     if verbose:
         fig, axs = plt.subplots(3, 3, figsize=(18, 12))
@@ -192,12 +258,16 @@ def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
     dzdx, dzdy = compute_grad(Z, config) # sometimes numpy = True caused a cross aligned with the axis?
     cos_theta = 1.0 / np.sqrt(1.0 + dzdx**2 + dzdy**2)
     cos_theta = np.clip(cos_theta, 1e-3, 1.0)
-    sput_yield = config.Y0 * (cos_theta**config.p) * np.exp(-config.q*(1.0/cos_theta - 1.0))
+    sput_yield = config.Y0 * (cos_theta**config.p) * np.exp(config.q*(1.0/cos_theta - 1.0))
     if verbose:
-        plt.imshow(sput_yield, "coolwarm")
+        plt.imshow(sput_yield, "viridis")
         plt.title("Sputter Yield")
         plt.colorbar()
         plt.show()
+        print("NaNs in cos_theta:", np.isnan(cos_theta).sum())
+        print("min cos_theta:", np.nanmin(cos_theta))
+    if config.sigma_smooth > 0:
+        sput_yield = sput_yield#gaussian_filter(sput_yield, sigma=config.sigma_smooth)
     return sput_yield
 
 def preprocess_Z(Z, config: ProcessConfig, verbose=False):
@@ -268,12 +338,85 @@ def compute_slice_target(Z_target, Z_current, dz, slice_idx, num_slices, slice_m
         return np.clip(Z_target - Z_current, 0, dz)
 
     if slice_mode == "envelope":
-        if num_slices <= 0:
-            return np.zeros_like(Z_target)
-        envelope = Z_target * (slice_idx + 1) / num_slices
-        return np.clip(envelope - Z_current, 0, dz)
+        # Try successive envelopes until one produces a non-zero increment
+        for k in range(slice_idx + 1, num_slices + 1):
+            envelope = Z_target * k / num_slices
+            diff = np.clip(envelope - Z_current, 0, dz)
+
+            if np.any(diff > 0):
+                return diff#gaussian_filter(diff, sigma=1)
+        return diff
 
     raise ValueError(f"Unknown slice_mode: {slice_mode}")
+
+
+def estimate_lipschitz(C_dot, CT_dot, N, n_iter=30):
+
+    x = np.random.randn(N)
+    x /= np.linalg.norm(x)
+
+    for _ in range(n_iter):
+
+        y = C_dot(x)
+        x_new = CT_dot(y)
+
+        norm = np.linalg.norm(x_new)
+
+        x = x_new / norm
+    #print(f"norm estimated: {norm}")
+    return norm
+
+def fista_projected(
+    D_vec,
+    x0,
+    L,
+    C_dot,
+    CT_dot,
+    maxiter=200,
+    tol=1e-6,
+    verbose=True
+):
+
+    x = x0.copy()
+    y = x.copy()
+
+    t = 1.0
+
+    prev_x = x.copy()
+
+    for k in range(maxiter):
+
+        # Gradient
+        residual = C_dot(y) - D_vec
+        grad = CT_dot(residual)
+
+        # Gradient step
+        x_new = y - grad / L
+
+        # Positivity projection
+        x_new = np.maximum(x_new, 0)
+
+        # FISTA momentum
+        t_new = 0.5 * (1 + np.sqrt(1 + 4 * t**2))
+
+        y = x_new + ((t - 1) / t_new) * (x_new - x)
+
+        # Convergence
+        dx = np.linalg.norm(x_new - x)
+
+        if verbose and k % 10 == 0:
+            cost = 0.5 * np.linalg.norm(C_dot(x_new) - D_vec)**2
+            print(f"iter {k:4d} | cost={cost:.3e} | dx={dx:.3e}")
+
+        if dx < tol:
+            if verbose:
+                print(f"Converged after {k} iterations")
+            break
+
+        x = x_new
+        t = t_new
+
+    return x
 
 
 def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10, slice_mode="residual", record_surface_history=False):
@@ -294,6 +437,10 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
             if verbose: print("Target profile reached.")
             break
         D_vec = D_slice.ravel()
+        
+        scale = np.max(D_vec)
+
+        D_scaled = D_vec / scale
 
         S_theta = update_S_from_Z(Z_current, config)
 
@@ -303,20 +450,55 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
             pre = S_theta * X
             conv = fftconvolve(pre, config.K, mode='same')  # TODO checken, ab wann die Näherung mit dem S_theta rausziehen eigentlich fine ist.
             return ((config.f_xy / config.h) * conv).ravel()
+        def C_dot(x_vec):
+            X = x_vec.reshape((n, n))
+            conv = fftconvolve(X, config.K, mode='same')
+            return ((config.f_xy / config.h) * conv * S_theta).ravel()
+        
 
         def CT_dot(y_vec):
             Y = y_vec.reshape((n, n))
             temp = config.f_xy * Y
             convT = fftconvolve(temp, np.flip(np.flip(config.K,0),1), mode='same')
             return ((S_theta * convT) / config.h).ravel()
+        def CT_dot(y_vec):
+            Y = y_vec.reshape((n, n))
+            temp = (config.f_xy / config.h) * (S_theta * Y)
+            convT = fftconvolve(temp, np.flip(config.K, (0,1)), mode='same')
+            return convT.ravel()
 
         C_linop = LinearOperator((n*n, n*n), matvec=C_dot, rmatvec=CT_dot, dtype=np.float64)
 
+        N = n * n
 
-        # LSQR solve
-        res = lsqr(C_linop, D_vec, atol=1e-6, btol=1e-6, iter_lim=200)  # TODO figure out tolerances
-        t_unconstr = res[0]
-        t_clip = np.clip(t_unconstr, 0, None)
+        L_est = estimate_lipschitz(
+            C_dot,
+            CT_dot,
+            N,
+            n_iter=20
+        )
+
+        print("Estimated Lipschitz:", L_est)
+
+        if len(dwell_maps) == 0:
+            t0 = np.zeros(N)
+        else:
+            t0 = dwell_maps[-1].ravel()
+
+        t = fista_projected(
+            D_vec=D_scaled,
+            x0=t0,
+            L=L_est,
+            C_dot=C_dot,
+            CT_dot=CT_dot,
+            maxiter=200,
+            tol=1e-6,
+            verbose=True
+        )
+        t_clip = t*scale
+        
+        # Apply smoothing to dwell map using beam sigma for physical consistency
+        t_clip = gaussian_filter(t_clip.reshape(n,n), sigma=config.sigma/config.dx).ravel()
 
         t_refined = postprocess(D_vec, t_clip, C_dot, CT_dot, n)#smooth_iterative_refine(D_vec, t_clip, C_dot, CT_dot, n, lam=1e-3), None, None#fista_projected(D_vec, t_clip, L_est,C_dot, CT_dot,
                          #              maxiter=maxiter, tol_dt=1e-8, verbose=False) # tol_dt=1e-8
