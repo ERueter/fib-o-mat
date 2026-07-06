@@ -422,7 +422,7 @@ def fista_projected(
     return x
 
 
-def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=True, plot_every=10, slice_mode="residual", record_surface_history=False, total_passes=None):
+def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=False, plot_every=10, slice_mode="residual", record_surface_history=False, total_passes=None):
     
     n = config.n
     Z_current = np.zeros_like(Z_target, dtype=float)
