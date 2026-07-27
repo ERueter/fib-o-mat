@@ -26,10 +26,13 @@ class ProcessConfig:
     f_xy : Ion Flux [ions / (m^2 s)]
     R: times of sigma after which Beam is assumed as zero
     Y0, p, q: Parameters from Yamamura-Formula. TODO find reasonable default parameters
+    material_scale: Optional measured scale for the combined factor Y0 * f_xy / h.
+        If provided, it overrides the analytical default and is used directly as the
+        constant depth scale in the simplified milling model.
     sigma_smooth: Amount of smoothing to be applied to avoid numerical artefacts. 
     use_numpy_grad: If True, numpy.gradient is used instead of spectral gradient.
     """
-    n: int = 500#1000#400
+    n: int = 1000#400
     dx: float = 20e-9#50e-9#0.025e-6 # eigentlich 20 nm
     dy: float = 20e-9#50e-9#0.025e-6
     sigma: float = 170e-9#400e-9#0.167e-6#0.2e-6  # 400 nm Halbwertsbreite
@@ -39,6 +42,7 @@ class ProcessConfig:
     Y0: float = 0.8#2.5
     p: float = -2.5#-0.5
     q: float = -1#0.0
+    material_scale: Optional[float] = None
     sigma_smooth: float = 1.0
     use_numpy_grad: bool = True
 
@@ -103,9 +107,15 @@ class ProcessConfig:
 
             self.K = K
 
+            self.material_scale = (
+                self.material_scale
+                if self.material_scale is not None
+                else self.Y0 * (self.f_xy / self.h)
+            )
+
             print("sum over kernel K:", K.sum())
             t_test = np.ones((self.n, self.n))
-            Z_test = ((self.f_xy / self.h) * fftconvolve(t_test, K)) * self.Y0
+            Z_test = fftconvolve(t_test, K) * self.material_scale
             print("mean Z_test:", Z_test.mean())
 
 
@@ -159,8 +169,8 @@ def compute_grad(Z, config: ProcessConfig, verbose=False):
     dzdx = np.fft.ifft2(1j * KY * Zk).real
     dzdy = np.fft.ifft2(1j * KX * Zk).real
 
-    plt.imshow(dzdx**2 + dzdy**2)
-    plt.show()
+    #plt.imshow(dzdx**2 + dzdy**2)
+    #plt.show()
 
     if config.sigma_smooth > 0:
         #dzdx = gaussian_filter(dzdx, sigma=config.sigma_smooth)
@@ -246,6 +256,7 @@ def compute_grad(Z, config: ProcessConfig, verbose=False):
 def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
     """
     Calculate the sputter yield matrix from the current surface.
+    Divergence from the paper: Returns S_theta/Y0 because Y0 is already in material_scale.
 
     Args:
     Z: Matrix of current depth at each pixel
@@ -258,7 +269,7 @@ def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
     dzdx, dzdy = compute_grad(Z, config) # sometimes numpy = True caused a cross aligned with the axis?
     cos_theta = 1.0 / np.sqrt(1.0 + dzdx**2 + dzdy**2)
     cos_theta = np.clip(cos_theta, 1e-3, 1.0)
-    sput_yield = config.Y0 * (cos_theta**config.p) * np.exp(config.q*(1.0/cos_theta - 1.0))
+    sput_yield = (cos_theta**config.p) * np.exp(config.q*(1.0/cos_theta - 1.0))
     print(dzdx.shape)
     print(cos_theta.shape)
     print(sput_yield.shape)
@@ -466,28 +477,18 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
         D_scaled = D_vec / scale
 
         S_theta = update_S_from_Z(Z_current, config)
+        depth_scale = config.material_scale
 
         # Matrices for current surface profile
         def C_dot(x_vec):
             X = x_vec.reshape((n, n))
-            pre = S_theta * X
-            conv = fftconvolve(pre, config.K, mode='same')  # TODO checken, ab wann die Näherung mit dem S_theta rausziehen eigentlich fine ist.
-            return ((config.f_xy / config.h) * conv).ravel()
-        def C_dot(x_vec):
-            X = x_vec.reshape((n, n))
             conv = fftconvolve(X, config.K, mode='same')
-            return ((config.f_xy / config.h) * conv * S_theta).ravel()
-        
+            return (depth_scale * conv * S_theta).ravel()
 
         def CT_dot(y_vec):
             Y = y_vec.reshape((n, n))
-            temp = config.f_xy * Y
-            convT = fftconvolve(temp, np.flip(np.flip(config.K,0),1), mode='same')
-            return ((S_theta * convT) / config.h).ravel()
-        def CT_dot(y_vec):
-            Y = y_vec.reshape((n, n))
-            temp = (config.f_xy / config.h) * (S_theta * Y)
-            convT = fftconvolve(temp, np.flip(config.K, (0,1)), mode='same')
+            temp = depth_scale * (S_theta * Y)
+            convT = fftconvolve(temp, np.flip(config.K, (0, 1)), mode='same')
             return convT.ravel()
 
         C_linop = LinearOperator((n*n, n*n), matvec=C_dot, rmatvec=CT_dot, dtype=np.float64)
@@ -527,7 +528,7 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
         dwell_maps.append(t_refined)
 
         # Update Surface
-        Z_delta = ((config.f_xy / config.h) * fftconvolve(t_refined.reshape(n,n), config.K, mode='same')) * S_theta
+        Z_delta = depth_scale * fftconvolve(t_refined.reshape(n,n), config.K, mode='same') * S_theta
         Z_current += repeat_count * Z_delta
         if record_surface_history:
             surface_history.append(Z_current.copy())
@@ -566,8 +567,8 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
             x_axis = (np.arange(n) - n//2) * config.dx * 1e6  # in µm
 
             # reconstruct surface from t
-            Z_before = ((config.f_xy / config.h) * fftconvolve(t_clip.reshape(n,n), config.K, mode='same')) * S_theta
-            Z_after  = ((config.f_xy / config.h) * fftconvolve(t_refined.reshape(n,n), config.K, mode='same')) * S_theta
+            Z_before = depth_scale * fftconvolve(t_clip.reshape(n,n), config.K, mode='same') * S_theta
+            Z_after  = depth_scale * fftconvolve(t_refined.reshape(n,n), config.K, mode='same') * S_theta
 
             target_cut = Z_target[center_idx, :] * 1e9
             before_cut = (Z_before[center_idx, :]) * 1e9
