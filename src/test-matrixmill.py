@@ -13,12 +13,13 @@ import matplotlib.pyplot as plt
 s = Sample()
 spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
-data = np.load("fein-aufgeloeste-sil-ohne-tieferlegung.npz")
+data = np.load("5-µm-sil-0-5575-mm-material-rate-sputter-yield-from-newer-vasile-paper-v2.npz")
 dwell_maps = data["dwell_maps"]
 
 
 
-for i, dwell_map in enumerate(dwell_maps):
+for i in range(0,len(dwell_maps)):
+    dwell_map = dwell_maps[i]
     print(f"Layer {i}: max_d = {np.max(dwell_map):.2e} s, shape = {dwell_map.shape}")
     max_d = np.max(dwell_map)
     if max_d > 0:
@@ -31,7 +32,7 @@ for i, dwell_map in enumerate(dwell_maps):
         dwell_map_scaled = dwell_map_scaled.reshape((n, n))
         n_rep = int(np.ceil(max_d / 10e-6))
         
-
+        """
         # Plot original and scaled dwell maps
         plt.figure(figsize=(12, 5))
         plt.subplot(1, 2, 1)
@@ -44,6 +45,7 @@ for i, dwell_map in enumerate(dwell_maps):
         plt.colorbar(label='Dwell time (s)')
         plt.title(f'Layer {i}: Scaled Dwell Map (max: {np.max(dwell_map_scaled):.2e} s)')
         plt.show()
+        """
 
 
         
@@ -95,8 +97,8 @@ for i, dwell_map in enumerate(dwell_maps):
     #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     # plot von erster map sieht normal aus, das zweite ist nur ein Punkt!!!
     exported = s.export(FEIStreamFile, n_rep=n_rep, margin=0.76) 
-    exported.save(f'sil-optimized-layer-test-matrix-flach-{i}.str')
-    s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
+    exported.save(f'5-µm-sil-0-5575-mm-material-rate-new-vasile-parameters-tiefer-gelegt-{i}.str')
+    #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     print(f"Layer {i}: max dwell {max_d:.2f} µs, scale {scale:.4f}, n_rep {n_rep}")
     s.empty_sites()
-    exit()
+    #exit()

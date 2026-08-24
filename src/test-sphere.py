@@ -12,18 +12,19 @@ from scipy.signal import fftconvolve
 
 s = Sample()
 
-config = vas.ProcessConfig(use_numpy_grad=False)
+config = vas.ProcessConfig(use_numpy_grad=True, Y0=1.75, p=-1.53, q=-0.175, h=9.6e28, f_xy=7.2e22) # 0.26 mm per second of millng    material_scale=0.5575e-3
 def postprocess(D_vec, t_clip, C_dot, CT_dot, n):
     return t_clip
 
 # TODO Frage an Katja: Die sil mit maxdwell-time 10 zu machen und dann einfach sehr oft zu millen müsste eigentlich in falscher shape resultieren?
-silmill = SILMill(radius_sil=3953*U_('nm'),radius=7370*U_('nm'), min_dwell_time=0.1)  # arbeitet in µs
+#silmill = SILMill(radius_sil=3953*U_('nm'),radius=7370*U_('nm'), min_dwell_time=0.1)  # arbeitet in µs
+silmill = SILMill(radius_sil=1000*U_('nm'),radius=2000*U_('nm'), min_dwell_time=0.1)  # arbeitet in µs
 
 # TODO silmill is larger than fov in vasile rn
 
 radius_sil=silmill._radius_sil
 radius=silmill._radius
-min_dwell_time=0.1
+min_dwell_time=0.025
 max_dwell_time = 10
 
 def dwell_func(point: np.ndarray) -> QuantityType:
@@ -32,7 +33,7 @@ def dwell_func(point: np.ndarray) -> QuantityType:
     dist = np.sqrt(dist_sq)
 
     # Shift apex downward by 10% of SIL radius
-    z_shift = 0.30 * radius_sil
+    z_shift = 50 # 50 nm
 
     if dist < radius_sil:
         # Original spherical cap term, shifted downward
@@ -53,21 +54,22 @@ def dwell_func(point: np.ndarray) -> QuantityType:
 
 mill = DDDMill(dwell_func, 1)
 
+#mill = silmill
 
 spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
 #a, repeats_for_depth = calibrate.calibrate(rasterstyle=spiral_style)
 
-circ = shapes.Circle(r=7370, center=(0,0))
+circ = shapes.Circle(r=2000, center=(0,0))
 
 
-target_depth = 7.3*U_('µm') # µm
+target_depth = 1*U_('µm') # µm
 #repeats = repeats_for_depth(target_depth)
 
 #print("repeats = " + str(repeats)) # 758 repeats = a mill with max-dwelltime 10 µs has to mill 758 times in total to reach depth 7.3 µm
 
 
-
+print("berechne target")
 Z_target, dx = vas.get_target_from_mill(
     mill=mill,
     resolution=config.n,            # choose desired resolution of the target
@@ -97,7 +99,7 @@ if False:  # I believe this was bullshit?
 
     Z_target = config.f_xy / config.h * Z_target  # Z umrechnen von der ZEIT zu der TIEFE
 
-
+print("plot kommt")
 import matplotlib.pyplot as plt
 plt.figure(figsize=(6,5))
 plt.imshow(Z_target, cmap='viridis', origin='lower', interpolation='nearest')
@@ -113,7 +115,7 @@ Z_final, dwell_maps, surface_history = vas.process_full_target(
     dz=dz,
     config=config,
     postprocess=postprocess,
-    verbose=True,
+    verbose=False,
     slice_mode="envelope",
     record_surface_history=True
 )
@@ -122,11 +124,12 @@ vas.plot_surface_history(surface_history, Z_blurred, config)
 vas.evaluate_accuracy(Z_blurred, Z_final, dwell_maps, config)
 
 # save in current directory with filename simulation_results_sine
-np.savez("simulation_results_sil_from_mill.npz",
+np.savez("51-µm-sil-parameter-from-paper.npz",
          Z_final=Z_final,
          dwell_maps=dwell_maps,
          Z_target=Z_blurred)
 
+exit()
 
 for i, dwell_map in enumerate(dwell_maps):
     print(f"Layer {i}: max_d = {np.max(dwell_map):.2e} s, shape = {dwell_map.shape}")
