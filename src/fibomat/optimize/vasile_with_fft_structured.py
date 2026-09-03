@@ -97,8 +97,8 @@ class ProcessConfig:
         # compute K if not provided
         if self.K is None:
             # Gaussian kernel
-            K = np.exp(-(self.Xk**2 + self.Yk**2) / (2 * self.sigma**2)) / (2 * np.pi * self.sigma**2)
-            K *= self.dx * self.dy
+            K = np.exp(-(self.Xk**2 + self.Yk**2) / (2 * self.sigma**2)) #/ (2 * np.pi * self.sigma**2) TODO wie mus dieser kernel aussehen???
+            #K *= self.dx * self.dy
 
             # circular cutoff mask
             R_phys = self.R * self.sigma
@@ -515,7 +515,7 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
             L=L_est,
             C_dot=C_dot,
             CT_dot=CT_dot,
-            maxiter=200,
+            maxiter=100,#200,
             tol=1e-6,
             verbose=True
         )

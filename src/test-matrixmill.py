@@ -13,13 +13,13 @@ import matplotlib.pyplot as plt
 s = Sample()
 spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
-data = np.load("5-µm-sil-0-5575-mm-material-rate-sputter-yield-from-newer-vasile-paper-v2.npz")
+data = np.load("51-µm-sil-parameter-from-paper.npz")
 dwell_maps = data["dwell_maps"]
 
 
 
 for i in range(0,len(dwell_maps)):
-    dwell_map = dwell_maps[i]
+    dwell_map = dwell_maps[i]/2 # TODO testen ob das /2 nötig ist für die spiral-rasterung
     print(f"Layer {i}: max_d = {np.max(dwell_map):.2e} s, shape = {dwell_map.shape}")
     max_d = np.max(dwell_map)
     if max_d > 0:
@@ -85,7 +85,7 @@ for i in range(0,len(dwell_maps)):
         dim_position=(0, 0) * U_('µm'), dim_fov=(20, 20) * U_('µm')
     )
 
-    circ = shapes.Circle(r=7370, center=(0,0))  # warum auch immer es crasht, wenn derselbe Kreis mehrfach benutzt wird???
+    circ = shapes.Circle(r=10000, center=(0,0))  # warum auch immer es crasht, wenn derselbe Kreis mehrfach benutzt wird???
     
     layer_site.create_pattern(
         dim_shape=circ * U_('nm'),
@@ -97,7 +97,7 @@ for i in range(0,len(dwell_maps)):
     #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     # plot von erster map sieht normal aus, das zweite ist nur ein Punkt!!!
     exported = s.export(FEIStreamFile, n_rep=n_rep, margin=0.76) 
-    exported.save(f'5-µm-sil-0-5575-mm-material-rate-new-vasile-parameters-tiefer-gelegt-{i}.str')
+    exported.save(f'kernel-ohne-dxdy-korrekter-kreis-{i}.str')
     #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     print(f"Layer {i}: max dwell {max_d:.2f} µs, scale {scale:.4f}, n_rep {n_rep}")
     s.empty_sites()
