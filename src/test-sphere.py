@@ -18,7 +18,7 @@ def postprocess(D_vec, t_clip, C_dot, CT_dot, n):
 
 # TODO Frage an Katja: Die sil mit maxdwell-time 10 zu machen und dann einfach sehr oft zu millen müsste eigentlich in falscher shape resultieren?
 #silmill = SILMill(radius_sil=3953*U_('nm'),radius=7370*U_('nm'), min_dwell_time=0.1)  # arbeitet in µs
-silmill = SILMill(radius_sil=1000*U_('nm'),radius=2000*U_('nm'), min_dwell_time=0.1)  # arbeitet in µs
+silmill = SILMill(radius_sil=5000*U_('nm'),radius=10000*U_('nm'), min_dwell_time=0.1)  # arbeitet in µs
 
 # TODO silmill is larger than fov in vasile rn
 
@@ -54,16 +54,16 @@ def dwell_func(point: np.ndarray) -> QuantityType:
 
 mill = DDDMill(dwell_func, 1)
 
-#mill = silmill
+mill = silmill
 
 spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
 #a, repeats_for_depth = calibrate.calibrate(rasterstyle=spiral_style)
 
-circ = shapes.Circle(r=2000, center=(0,0))
+circ = shapes.Circle(r=10000, center=(0,0))
 
 
-target_depth = 1*U_('µm') # µm
+target_depth = 5*U_('µm') # µm
 #repeats = repeats_for_depth(target_depth)
 
 #print("repeats = " + str(repeats)) # 758 repeats = a mill with max-dwelltime 10 µs has to mill 758 times in total to reach depth 7.3 µm
