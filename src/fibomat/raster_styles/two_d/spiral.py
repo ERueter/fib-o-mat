@@ -18,7 +18,8 @@ class Spiral(RasterStyle):
     """
     pitch: pitch between points on the spiral
     spiral_pitch: distance between arms of the spiral
-    direction: "outwards" for beginning in the center, "inwards" for beginning outside, "out-in" for going out and back in
+    direction: "outwards" for beginning in the center, "inwards" for beginning outside,
+    "out-in" for going out and back in, "in-out" for going in and back out
 
     """
     def __init__(self, pitch: LengthQuantity, spiral_pitch: LengthQuantity, scan_sequence: ScanSequence, direction: Optional[str]):
@@ -26,8 +27,8 @@ class Spiral(RasterStyle):
         self._spiral_pitch = spiral_pitch
         self._scan_sequence = scan_sequence
         if direction:
-            if direction not in ["outwards", "inwards", "out-in"]:
-                raise ValueError("Direction must be 'outwards', 'inwards' or 'in-out', if not specified it is 'outwards'.")
+            if direction not in ["outwards", "inwards", "out-in", "in-out"]:
+                raise ValueError("Direction must be 'outwards', 'inwards', 'out-in' or 'in-out', if not specified it is 'outwards'.")
         self._direction = direction
 
     @property
@@ -117,6 +118,8 @@ class Spiral(RasterStyle):
             points_inside = points_inside[::-1]
         elif self._direction == "out-in":
             points_inside = np.concatenate([points_inside, points_inside[::-1]])
+        elif self._direction == "in-out":
+            points_inside = np.concatenate([points_inside[::-1], points_inside])
 
         #Wrap in RasterizedPattern
         rast_pat = RasterizedPattern(points_inside, out_length_unit, out_time_unit)
