@@ -36,12 +36,12 @@ class ProcessConfig:
     dx: float = 20e-9#50e-9#0.025e-6 # eigentlich 20 nm
     dy: float = 20e-9#50e-9#0.025e-6
     sigma: float = 170e-9#400e-9#0.167e-6#0.2e-6  # 400 nm Halbwertsbreite
-    h: float = 5e28 # lets try in m^3 #5e22 # atoms/cm^3
-    f_xy: int = 1e23 #1e19 # ions/cm^2s ?   #np.array = np.ones((n, n), dtype=np.uint8) * 1e19 # TODO save memory here
+    h: float = 9.6e28 # Wert für SiC jetzt #5e28 # lets try in m^3 #5e22 # atoms/cm^3
+    f_xy: int = 7.2e22 #1e19 # ions/cm^2s ?   #np.array = np.ones((n, n), dtype=np.uint8) * 1e19 # TODO save memory here
     R: int = 3
-    Y0: float = 0.8#2.5
-    p: float = -2.5#-0.5
-    q: float = -1#0.0
+    Y0: float = 1.75#0.8#2.5
+    p: float = -1.53#-2.5#-0.5 #das f
+    q: float = -0.175#-1#0.0
     material_scale: Optional[float] = None
     sigma_smooth: float = 1.0
     use_numpy_grad: bool = True
@@ -253,7 +253,22 @@ def compute_grad(Z, config: ProcessConfig, verbose=False):
     return dzdx, dzdy
 
 
-def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
+def yamamura_sputter_yield(theta, p=-1.53, q=-0.175):
+    """Return the Yamamura sputter yield for incidence angle ``theta``.
+
+    ``theta`` is given in radians and may be a scalar or a NumPy array.
+    """
+    theta = np.asarray(theta)
+    cos_theta = np.clip(np.cos(theta), 1e-3, 1.0)
+    return (cos_theta**p) * np.exp(q * (1.0 / cos_theta - 1.0))
+
+
+def update_S_from_Z(
+    Z,
+    config: ProcessConfig,
+    verbose=False,
+    sputter_yield_func: Optional[Callable] = None,
+):
     """
     Calculate the sputter yield matrix from the current surface.
     Divergence from the paper: Returns S_theta/Y0 because Y0 is already in material_scale.
@@ -262,6 +277,9 @@ def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
     Z: Matrix of current depth at each pixel
     config: Parameter for this run united in a ProcessConfig-Object
     verbose: If True, sputter yield gets plotted
+    sputter_yield_func: Optional function receiving the incidence angle in
+        radians and returning the sputter yield. If omitted, the Yamamura
+        function is used with ``config.p`` and ``config.q``.
 
     Return:
     Matrix with the sputter yield for each pixel
@@ -269,7 +287,12 @@ def update_S_from_Z(Z, config: ProcessConfig, verbose=False):
     dzdx, dzdy = compute_grad(Z, config) # sometimes numpy = True caused a cross aligned with the axis?
     cos_theta = 1.0 / np.sqrt(1.0 + dzdx**2 + dzdy**2)
     cos_theta = np.clip(cos_theta, 1e-3, 1.0)
-    sput_yield = (cos_theta**config.p) * np.exp(config.q*(1.0/cos_theta - 1.0))
+    theta = np.arccos(cos_theta)
+    if sputter_yield_func is None:
+        sputter_yield_func = lambda angle: yamamura_sputter_yield(
+            angle, config.p, config.q
+        )
+    sput_yield = np.asarray(sputter_yield_func(theta))
     print(dzdx.shape)
     print(cos_theta.shape)
     print(sput_yield.shape)
