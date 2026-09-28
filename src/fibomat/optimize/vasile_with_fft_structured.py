@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from functools import lru_cache
+from pathlib import Path
 from scipy.signal import fftconvolve
 from scipy.ndimage import gaussian_filter
 from scipy.sparse.linalg import LinearOperator, lsqr
@@ -28,7 +30,7 @@ class ProcessConfig:
     Y0, p, q: Parameters from Yamamura-Formula. TODO find reasonable default parameters
     material_scale: Optional measured scale for the combined factor Y0 * f_xy / h.
         If provided, it overrides the analytical default and is used directly as the
-        constant depth scale in the simplified milling model.
+        constant depth scale in the simplified milling model. # TODO make material_scale compatible with non-yamamura!!!
     sigma_smooth: Amount of smoothing to be applied to avoid numerical artefacts. 
     use_numpy_grad: If True, numpy.gradient is used instead of spectral gradient.
     """
@@ -39,7 +41,7 @@ class ProcessConfig:
     h: float = 9.6e28 # Wert für SiC jetzt #5e28 # lets try in m^3 #5e22 # atoms/cm^3
     f_xy: int = 7.2e22 #1e19 # ions/cm^2s ?   #np.array = np.ones((n, n), dtype=np.uint8) * 1e19 # TODO save memory here
     R: int = 3
-    Y0: float = 1.75#0.8#2.5
+    Y0: float = 1#1.75#0.8#2.5
     p: float = -1.53#-2.5#-0.5 #das f
     q: float = -0.175#-1#0.0
     material_scale: Optional[float] = None
@@ -110,7 +112,7 @@ class ProcessConfig:
             self.material_scale = (
                 self.material_scale
                 if self.material_scale is not None
-                else self.Y0 * (self.f_xy / self.h)
+                else (self.f_xy / self.h)#self.Y0 * (self.f_xy / self.h)
             )
 
             print("sum over kernel K:", K.sum())
@@ -253,14 +255,14 @@ def compute_grad(Z, config: ProcessConfig, verbose=False):
     return dzdx, dzdy
 
 
-def yamamura_sputter_yield(theta, p=-1.53, q=-0.175):
+def yamamura_sputter_yield(theta, Y0,p=-1.53, q=-0.175):
     """Return the Yamamura sputter yield for incidence angle ``theta``.
 
     ``theta`` is given in radians and may be a scalar or a NumPy array.
     """
     theta = np.asarray(theta)
     cos_theta = np.clip(np.cos(theta), 1e-3, 1.0)
-    return (cos_theta**p) * np.exp(q * (1.0 / cos_theta - 1.0))
+    return Y0*(cos_theta**p) * np.exp(q * (1.0 / cos_theta - 1.0))
 
 
 
@@ -281,6 +283,24 @@ def sim_yield_eb2ev(theta_rad):
     ])
     return np.interp(angle_deg, theta_deg, y_sim_eb2ev,
                      left=y_sim_eb2ev[0], right=0.0)
+
+
+@lru_cache(maxsize=1)
+def _load_katja_sputter_yield_data():
+    data_path = Path(__file__).with_name("katjas-claude-sputteryield-fit.csv")
+    data = np.loadtxt(data_path, delimiter=",", skiprows=1)
+    return data[:, 0], data[:, 1]
+
+
+def katja_sputter_yield(theta_rad):
+    """Interpolate Katja's fitted sputter yield for angles in radians.
+
+    The CSV is loaded only once. Values above its 89-degree range are zero,
+    matching the extrapolation policy of :func:`sim_yield_eb2ev`.
+    """
+    angle_deg = np.rad2deg(np.asarray(theta_rad))
+    angles, yields = _load_katja_sputter_yield_data()
+    return np.interp(angle_deg, angles, yields, left=yields[0], right=0.0)
 
 
 
@@ -311,7 +331,7 @@ def update_S_from_Z(
     theta = np.arccos(cos_theta)
     if sputter_yield_func is None:
         sputter_yield_func = lambda angle: yamamura_sputter_yield(
-            angle, config.p, config.q
+            angle, config.Y0, config.p, config.q
         )
     sput_yield = np.asarray(sputter_yield_func(theta))
     print(dzdx.shape)
@@ -520,7 +540,7 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
 
         D_scaled = D_vec / scale
 
-        S_theta = update_S_from_Z(Z_current, config)
+        S_theta = update_S_from_Z(Z_current, config, sputter_yield_func=katja_sputter_yield, verbose=False)
         depth_scale = config.material_scale
 
         # Matrices for current surface profile
@@ -559,7 +579,7 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
             L=L_est,
             C_dot=C_dot,
             CT_dot=CT_dot,
-            maxiter=100,#200,
+            maxiter=25,#50,#100,#200,
             tol=1e-6,
             verbose=True
         )
