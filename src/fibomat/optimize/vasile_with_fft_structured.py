@@ -263,6 +263,27 @@ def yamamura_sputter_yield(theta, p=-1.53, q=-0.175):
     return (cos_theta**p) * np.exp(q * (1.0 / cos_theta - 1.0))
 
 
+
+def sim_yield_eb2ev(theta_rad):
+    # simulated Srimp sputteryield
+    angle_deg = np.rad2deg(theta_rad)
+    # Interpolate within the table; use zero above its 89-degree range.
+    theta_deg = np.array([
+    0, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60,
+    65, 70, 72, 74, 76, 78, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89,
+    ], dtype=float)
+
+    y_sim_eb2ev = np.array([
+        0.8228, 0.7992, 0.8556, 0.9566, 1.0548, 1.2136, 1.4100,
+        1.6456, 1.9666, 2.2688, 2.8588, 3.3954, 4.1226, 5.0692,
+        6.0320, 6.2956, 6.6510, 6.8286, 6.7924, 6.5168, 6.2074,
+        5.7318, 5.2194, 4.3402, 3.4274, 2.3672, 1.3926, 0.5870, 0.1792,
+    ])
+    return np.interp(angle_deg, theta_deg, y_sim_eb2ev,
+                     left=y_sim_eb2ev[0], right=0.0)
+
+
+
 def update_S_from_Z(
     Z,
     config: ProcessConfig,
