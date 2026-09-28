@@ -12,7 +12,7 @@ from scipy.signal import fftconvolve
 
 s = Sample()
 
-config = vas.ProcessConfig(use_numpy_grad=True, Y0=1.75, p=-1.53, q=-0.175, h=9.6e28, f_xy=7.2e22) # 0.26 mm per second of millng    material_scale=0.5575e-3
+config = vas.ProcessConfig(use_numpy_grad=True, Y0=0.95, p=-2.76, q=-0.68, h=9.6e28, f_xy=7.2e22) #mit dem katja sputteryield werden Y,p,q nicht benutzt# q in exp, p in cos # 0.26 mm per second of millng    material_scale=0.5575e-3
 def postprocess(D_vec, t_clip, C_dot, CT_dot, n):
     return t_clip
 
@@ -33,7 +33,7 @@ def dwell_func(point: np.ndarray) -> QuantityType:
     dist = np.sqrt(dist_sq)
 
     # Shift apex downward by 10% of SIL radius
-    z_shift = 50 # 50 nm
+    z_shift = 500 # 50 nm
 
     if dist < radius_sil:
         # Original spherical cap term, shifted downward
@@ -124,7 +124,7 @@ vas.plot_surface_history(surface_history, Z_blurred, config)
 vas.evaluate_accuracy(Z_blurred, Z_final, dwell_maps, config)
 
 # save in current directory with filename simulation_results_sine
-np.savez("51-µm-sil-parameter-from-paper.npz",
+np.savez("5-µm-sil-katjas-sputyield-fitted-to-new-data.npz",
          Z_final=Z_final,
          dwell_maps=dwell_maps,
          Z_target=Z_blurred)
