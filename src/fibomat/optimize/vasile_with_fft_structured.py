@@ -630,6 +630,133 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
     return Z_current, dwell_maps
 
 
+def simulate_milling_from_dwell_times(
+    dwell_maps,
+    Z_target,
+    config: ProcessConfig,
+    sputter_yield_func: Optional[Callable] = None,
+    sputter_yield_func_2: Optional[Callable] = None,
+    verbose=False,
+    plot_every=10,
+    record_surface_history=False,
+):
+    """
+    Simulate the milling process from a sequence of dwell-time maps.
+
+    Parameters:
+        dwell_maps: Iterable of dwell-time maps. Each entry may be either a
+            flattened vector of length n*n, a 2D array of shape (n, n), or a
+            single 2D map for a one-step simulation.
+        Z_target: Final target depth matrix used for residual/error plots.
+        config: Process configuration for the forward simulation.
+        sputter_yield_func: Optional angular sputter-yield function used for the
+            primary forward simulation. If a 2-tuple/list is passed, it is
+            interpreted as ``(yield_1, yield_2)`` and both models are simulated.
+        sputter_yield_func_2: Optional second sputter-yield function for direct
+            comparison against ``sputter_yield_func``.
+        verbose: If True, plot intermediate simulated surfaces and the
+            cross-section for each yield model.
+        plot_every: Plot every nth slice when verbose is enabled.
+        record_surface_history: If True, also return the history of surfaces.
+
+    Returns:
+        If only one yield function is used, returns the final surface depth matrix.
+        If two yield functions are used, returns ``(Z_current_1, Z_current_2)``.
+        If ``record_surface_history`` is True, also returns the history list(s).
+    """
+    if dwell_maps is None:
+        raise ValueError("dwell_maps must not be None.")
+
+    if isinstance(sputter_yield_func, (list, tuple)) and len(sputter_yield_func) == 2:
+        sputter_yield_func_2 = sputter_yield_func[1]
+        sputter_yield_func = sputter_yield_func[0]
+
+    if sputter_yield_func is None:
+        sputter_yield_func = lambda angle: yamamura_sputter_yield(
+            angle, config.Y0, config.p, config.q
+        )
+
+    compare_mode = sputter_yield_func_2 is not None
+    if compare_mode:
+        yield_funcs = [sputter_yield_func, sputter_yield_func_2]
+        yield_names = [
+            getattr(f, "__name__", "yield_1") for f in yield_funcs
+        ]
+    else:
+        yield_funcs = [sputter_yield_func]
+        yield_names = [getattr(sputter_yield_func, "__name__", "yield")]
+
+    if isinstance(dwell_maps, np.ndarray):
+        if dwell_maps.ndim == 1:
+            dwell_maps = [dwell_maps.reshape((config.n, config.n))]
+        elif dwell_maps.ndim == 2 and dwell_maps.shape == (config.n, config.n):
+            dwell_maps = [dwell_maps]
+        else:
+            dwell_maps = [np.asarray(dm).reshape((config.n, config.n)) for dm in dwell_maps]
+    elif isinstance(dwell_maps, (list, tuple)):
+        if len(dwell_maps) == 0:
+            raise ValueError("dwell_maps must contain at least one dwell map.")
+        dwell_maps = [np.asarray(dm).reshape((config.n, config.n)) for dm in dwell_maps]
+    else:
+        dwell_maps = [np.asarray(dwell_maps).reshape((config.n, config.n))]
+
+    n = config.n
+    Z_currents = [np.zeros_like(Z_target, dtype=float) for _ in yield_funcs]
+    surface_history = [[] for _ in yield_funcs]
+
+    for s, t_map in enumerate(dwell_maps):
+        t_map = np.asarray(t_map, dtype=float)
+        if t_map.shape != (n, n):
+            raise ValueError(
+                f"Each dwell map must have shape ({n}, {n}), got {t_map.shape}."
+            )
+
+        for idx, func in enumerate(yield_funcs):
+            S_theta = update_S_from_Z(
+                Z_currents[idx],
+                config,
+                sputter_yield_func=func,
+                verbose=False,
+            )
+
+            depth_scale = config.material_scale
+            Z_delta = depth_scale * fftconvolve(t_map, config.K, mode='same') * S_theta
+            Z_currents[idx] = Z_currents[idx] + Z_delta
+
+            if record_surface_history:
+                surface_history[idx].append(Z_currents[idx].copy())
+
+        if verbose and (s % plot_every == 0 or s == len(dwell_maps) - 1):
+            center_idx = n // 2
+            x_axis = (np.arange(n) - n // 2) * config.dx * 1e6  # µm
+            target_cut = Z_target[center_idx, :] * 1e6  # µm
+
+            plt.figure(figsize=(8, 5))
+            plt.plot(x_axis, target_cut, label="Target profile", color="black", linewidth=2)
+
+            for idx, Z_current in enumerate(Z_currents):
+                cut = Z_current[center_idx, :] * 1e6  # µm
+                plt.plot(x_axis, cut, label=f"{yield_names[idx]} profile", linewidth=2)
+
+            plt.xlabel("x [µm]")
+            plt.ylabel("Depth [µm]")
+            plt.title(f"Cross-section along x-axis after step {s+1}/{len(dwell_maps)}")
+            plt.legend()
+            plt.grid(True)
+            plt.axis("equal")
+            plt.tight_layout()
+            plt.show()
+
+    if compare_mode:
+        if record_surface_history:
+            return tuple(Z_currents), tuple(surface_history)
+        return tuple(Z_currents)
+
+    if record_surface_history:
+        return Z_currents[0], surface_history[0]
+    return Z_currents[0]
+
+
 def plot_surface_history(Z_history, Z_target, config, axis='x'):
     """
     Plot the accumulated surface profile after each slice.
