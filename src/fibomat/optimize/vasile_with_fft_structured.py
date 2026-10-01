@@ -230,7 +230,7 @@ def compute_grad(Z, config: ProcessConfig, verbose=False):
         plt.show()
     return dzdx, dzdy
 
-
+##################### Example Sputter Yield Functions #####################
 def yamamura_sputter_yield(theta, Y0,p=-1.53, q=-0.175):
     """Return the Yamamura sputter yield for incidence angle ``theta``.
 
@@ -278,7 +278,7 @@ def katja_sputter_yield(theta_rad):
     angles, yields = _load_katja_sputter_yield_data()
     return np.interp(angle_deg, angles, yields, left=yields[0], right=0.0)
 
-
+########################################################################
 
 def update_S_from_Z(
     Z,
@@ -531,7 +531,6 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
             convT = fftconvolve(temp, np.flip(config.K, (0, 1)), mode='same')
             return convT.ravel()
 
-        C_linop = LinearOperator((n*n, n*n), matvec=C_dot, rmatvec=CT_dot, dtype=np.float64)
 
         N = n * n
 
