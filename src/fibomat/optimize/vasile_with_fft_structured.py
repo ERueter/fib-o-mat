@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 import matplotlib as mpl
 from functools import lru_cache
 from pathlib import Path
@@ -630,6 +631,34 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
     return Z_current, dwell_maps
 
 
+def _bind_sputter_yield_to_config(func: Optional[Callable], config: ProcessConfig):
+    """Return a theta-only callable, binding the config-specific yield parameters."""
+    if func is None:
+        return lambda angle: yamamura_sputter_yield(
+            angle, Y0=config.Y0, p=config.p, q=config.q
+        )
+
+    try:
+        import inspect
+        sig = inspect.signature(func)
+        params = list(sig.parameters)
+        if len(params) == 1 or all(p not in {"Y0", "p", "q"} for p in params):
+            return func
+    except (TypeError, ValueError):
+        pass
+
+    def wrapped(theta):
+        try:
+            return func(theta, Y0=config.Y0, p=config.p, q=config.q)
+        except TypeError:
+            try:
+                return func(theta, config.Y0, config.p, config.q)
+            except TypeError:
+                return func(theta)
+
+    return wrapped
+
+
 def simulate_milling_from_dwell_times(
     dwell_maps,
     Z_target,
@@ -671,16 +700,17 @@ def simulate_milling_from_dwell_times(
         sputter_yield_func_2 = sputter_yield_func[1]
         sputter_yield_func = sputter_yield_func[0]
 
-    if sputter_yield_func is None:
-        sputter_yield_func = lambda angle: yamamura_sputter_yield(
-            angle, config.Y0, config.p, config.q
-        )
+    sputter_yield_func = _bind_sputter_yield_to_config(sputter_yield_func, config)
 
     compare_mode = sputter_yield_func_2 is not None
     if compare_mode:
-        yield_funcs = [sputter_yield_func, sputter_yield_func_2]
+        yield_funcs = [
+            _bind_sputter_yield_to_config(sputter_yield_func, config),
+            _bind_sputter_yield_to_config(sputter_yield_func_2, config),
+        ]
         yield_names = [
-            getattr(f, "__name__", "yield_1") for f in yield_funcs
+            getattr(sputter_yield_func, "__name__", "yield_1"),
+            getattr(sputter_yield_func_2, "__name__", "yield_2"),
         ]
     else:
         yield_funcs = [sputter_yield_func]
@@ -732,6 +762,9 @@ def simulate_milling_from_dwell_times(
             target_cut = Z_target[center_idx, :] * 1e6  # µm
 
             plt.figure(figsize=(8, 5))
+            ax1 = plt.gca()
+            ax1.xaxis.set_major_locator(MultipleLocator(0.5))
+            ax1.yaxis.set_major_locator(MultipleLocator(0.5))
             plt.plot(x_axis, target_cut, label="Target profile", color="black", linewidth=2)
 
             for idx, Z_current in enumerate(Z_currents):
