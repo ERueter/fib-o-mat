@@ -59,30 +59,6 @@ class ProcessConfig:
     Xk: np.ndarray = field(init=False)
     Yk: np.ndarray = field(init=False)
 
-    def __post_init_old__(self):
-        # ensure f_xy matches n if not provided
-        if self.f_xy is None:
-             self.f_xy = 1e19 #self.f_xy = np.ones((self.n, self.n), dtype=np.uint8) * 1e19
-
-        # compute kernel support in pixels
-        self.rpx = int(np.ceil(self.R * self.sigma / self.dx))
-        self.xs = np.arange(-self.rpx, self.rpx + 1) * self.dx
-        self.ys = np.arange(-self.rpx, self.rpx + 1) * self.dy
-        self.Xk, self.Yk = np.meshgrid(self.xs, self.ys, indexing="xy")
-
-        # compute K if not provided
-        if self.K is None:
-            K = np.exp(-(self.Xk**2 + self.Yk**2) / (2 * self.sigma**2)) / (2 * np.pi * self.sigma**2)
-            #K /= K.sum()
-            K *= self.dx * self.dy
-            self.K = K
-            print("sum over kernel k")
-            print(K.sum())
-            t_test = np.ones((self.n,self.n))
-            Z_test = ((self.f_xy / self.h) * fftconvolve(t_test, K)) * self.Y0
-
-            print(Z_test.mean())
-            #raise Exception("end of test")
 
     def __post_init__(self):
         # ensure f_xy matches n if not provided
