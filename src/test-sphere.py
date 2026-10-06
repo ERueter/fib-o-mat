@@ -52,9 +52,89 @@ def dwell_func(point: np.ndarray) -> QuantityType:
 
     return Q_(max(depth, min_dwell_time), "microsecond")
 
+
+def dwell_func(point: np.ndarray) -> QuantityType:
+    x, y = point[0], point[1]
+    r = np.sqrt(x * x + y * y)
+
+    # --------------------------------------------------------
+    # Geometrie
+    # --------------------------------------------------------
+    R_sil = 5000.0       # nm
+    R_outer = 10000.0    # nm
+    R_blend = 1000#500.0      # nm
+
+    # Steilere Gerade, die weiterhin bei r = 10 µm
+    # auf Tiefe 0 endet
+    m_line = -1.2
+
+    # Tangentialpunkt Kugel -> 500-nm-Kreis
+    r_sphere_transition = 4988.894767357017
+
+    # Mittelpunkt des Übergangskreises
+    x_center = 5487.784244092719
+    z_center = 4633.633939498072
+
+    # Tangentialpunkt Kreis -> Gerade
+    r_line_transition = 5871.894883891407
+
+    # --------------------------------------------------------
+    # außerhalb
+    # --------------------------------------------------------
+    if r > R_outer:
+        return Q_(0, "microsecond")
+
+    # --------------------------------------------------------
+    # Kugelteil
+    # --------------------------------------------------------
+    if r <= r_sphere_transition:
+
+        depth = (
+            R_sil
+            - np.sqrt(
+                max(R_sil**2 - r**2, 0.0)
+            )
+        )
+
+    # --------------------------------------------------------
+    # 500-nm-Kreis
+    # --------------------------------------------------------
+    elif r <= r_line_transition:
+
+        depth = (
+            z_center
+            + np.sqrt(
+                max(
+                    R_blend**2
+                    - (r - x_center)**2,
+                    0.0
+                )
+            )
+        )
+
+    # --------------------------------------------------------
+    # linearer Teil
+    # --------------------------------------------------------
+    else:
+
+        depth = (
+            m_line * (r - R_outer)
+        )
+
+    # Tiefe -> Dwell-Zeit
+    #
+    # 5000 nm entsprechen weiterhin 10 µs.
+    dwell = max_dwell_time * depth / R_sil
+
+    return Q_(
+        max(dwell, min_dwell_time),
+        "microsecond"
+    )
+
+
 mill = DDDMill(dwell_func, 1)
 
-mill = silmill
+#mill = silmill
 
 spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
@@ -63,7 +143,7 @@ spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * 
 circ = shapes.Circle(r=10000, center=(0,0))
 
 
-target_depth = 5*U_('µm') # µm
+target_depth = 5.5*U_('µm') # µm
 #repeats = repeats_for_depth(target_depth)
 
 #print("repeats = " + str(repeats)) # 758 repeats = a mill with max-dwelltime 10 µs has to mill 758 times in total to reach depth 7.3 µm
@@ -101,10 +181,24 @@ if False:  # I believe this was bullshit?
 
 print("plot kommt")
 import matplotlib.pyplot as plt
-plt.figure(figsize=(6,5))
-plt.imshow(Z_target, cmap='viridis', origin='lower', interpolation='nearest')
-plt.colorbar(label=f"Target Depth [m]")
-plt.title("Generated SIL Target (from SILMill)")
+resolution = Z_target.shape[0]
+grid_nm = (np.arange(resolution) - resolution / 2 + 0.5) * dx
+lower_y_idx = np.searchsorted(grid_nm, 0, side="right") - 1
+upper_y_idx = lower_y_idx + 1
+y_fraction = -grid_nm[lower_y_idx] / (grid_nm[upper_y_idx] - grid_nm[lower_y_idx])
+target_x_section = (
+    (1 - y_fraction) * Z_target[lower_y_idx, :]
+    + y_fraction * Z_target[upper_y_idx, :]
+)
+x_axis_um = grid_nm / 1000
+
+plt.figure(figsize=(8, 5))
+plt.plot(x_axis_um, target_x_section * 1e6)
+plt.xlabel("x [µm]")
+plt.ylabel("Target depth [µm]")
+plt.title("Z_target cross-section at y = 0")
+plt.grid(True)
+plt.tight_layout()
 plt.show()
 #print(f"Z_target skaliert mit Faktor {scale:.4f}, max Z_target: {np.max(Z_target):.2f} µs")
 

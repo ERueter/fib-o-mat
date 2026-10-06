@@ -264,7 +264,7 @@ def sim_yield_eb2ev(theta_rad):
 
 @lru_cache(maxsize=1)
 def _load_katja_sputter_yield_data():
-    data_path = Path(__file__).with_name("katjas-claude-sputteryield-fit.csv")
+    data_path = Path(__file__).with_name("katjas-claude-sputteryield-shifted-fit.csv")
     data = np.loadtxt(data_path, delimiter=",", skiprows=1)
     return data[:, 0], data[:, 1]
 
@@ -277,6 +277,23 @@ def katja_sputter_yield(theta_rad):
     """
     angle_deg = np.rad2deg(np.asarray(theta_rad))
     angles, yields = _load_katja_sputter_yield_data()
+    return np.interp(angle_deg, angles, yields, left=yields[0], right=0.0)
+
+@lru_cache(maxsize=1)
+def _load_katja_sputter_yield_sim_data():
+    data_path = Path(__file__).with_name("katjas-claude-sputteryield-fit.csv")
+    data = np.loadtxt(data_path, delimiter=",", skiprows=1)
+    return data[:, 0], data[:, 1]
+
+
+def katja_sputter_yield_sim(theta_rad):
+    """Interpolate Katja's fitted sputter yield for angles in radians.
+
+    The CSV is loaded only once. Values above its 89-degree range are zero,
+    matching the extrapolation policy of :func:`sim_yield_eb2ev`.
+    """
+    angle_deg = np.rad2deg(np.asarray(theta_rad))
+    angles, yields = _load_katja_sputter_yield_sim_data()
     return np.interp(angle_deg, angles, yields, left=yields[0], right=0.0)
 
 ########################################################################

@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 s = Sample()
 spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
-data = np.load("5-µm-sil-katjas-sputyield-fitted-to-new-data.npz")
+data = np.load("/home/emma/Documents/FBI/fibomat-v.0.6/smoothed-with-circle.npz")
 dwell_maps = data["dwell_maps"]
 
 
@@ -97,7 +97,7 @@ for i in range(0,len(dwell_maps)):
     #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     # plot von erster map sieht normal aus, das zweite ist nur ein Punkt!!!
     exported = s.export(FEIStreamFile, n_rep=n_rep, margin=0.76) 
-    exported.save(f'katjas-sim-fitted-to-new-data-{i}.str')
+    exported.save(f'katjas-sim-fitted-rounded-with-circle-{i}.str')
     #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     print(f"Layer {i}: max dwell {max_d:.2f} µs, scale {scale:.4f}, n_rep {n_rep}")
     s.empty_sites()

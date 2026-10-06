@@ -5,6 +5,8 @@ from fibomat.optimize.vasile_with_fft_structured import (
     ProcessConfig,
     yamamura_sputter_yield,
     simulate_milling_from_dwell_times,
+    katja_sputter_yield,
+    katja_sputter_yield_sim
 )
 
 
@@ -36,8 +38,8 @@ def plot_sputter_yield_comparison():
     theta = np.linspace(0.0, np.deg2rad(89.0), 500)
     theta_deg = np.rad2deg(theta)
 
-    y_ref = yamamura_sputter_yield(theta, Y0=1.75, p=-1.53, q=-0.175)
-    y_dist = yamamura_sputter_yield(theta, Y0=1.3, p=-4.5, q=-1.3)#disturbed_yamamura_sputter_yield(theta, Y0=1.75, p=-1.53, q=-0.175, amplitude=0.12) #
+    y_ref = katja_sputter_yield(theta)#yamamura_sputter_yield(theta, Y0=1.75, p=-1.53, q=-0.175)
+    y_dist = katja_sputter_yield_sim(theta)#yamamura_sputter_yield(theta, Y0=1.3, p=-4.5, q=-1.3)#disturbed_yamamura_sputter_yield(theta, Y0=1.75, p=-1.53, q=-0.175, amplitude=0.12) #
 
     plt.figure(figsize=(8, 5))
     plt.plot(theta_deg, y_ref, label="Yamamura", linewidth=2)
@@ -52,7 +54,7 @@ def plot_sputter_yield_comparison():
 
 
 # path to the paper-based target data
-npz_path = r"c:\Users\erue\Documents\fibomat\51-µm-sil-parameter-from-paper.npz"
+npz_path = "/home/emma/Documents/FBI/fibomat-v.0.6/smoothed-with-circle.npz"#r"c:\Users\erue\Documents\fibomat\51-µm-sil-parameter-from-paper.npz"
 
 # load target + dwell maps
 with np.load(npz_path) as data:
@@ -77,7 +79,7 @@ config = ProcessConfig(
 plot_sputter_yield_comparison()
 
 # bind the config parameters explicitly to avoid argument-mismatch errors
-ref_yield = lambda theta: yamamura_sputter_yield(theta, Y0=config.Y0, p=config.p, q=config.q)
+ref_yield = katja_sputter_yield
 dist_yield = lambda theta: disturbed_yamamura_sputter_yield(
     theta,
     Y0=config.Y0,
@@ -85,7 +87,7 @@ dist_yield = lambda theta: disturbed_yamamura_sputter_yield(
     q=config.q,
     amplitude=0.12,
 )
-dist_yield = lambda theta: yamamura_sputter_yield(theta, Y0=1.3, p=-4.5, q=-1.3)
+dist_yield = katja_sputter_yield_sim#lambda theta: yamamura_sputter_yield(theta, Y0=1.3, p=-4.5, q=-1.3)
 
 # simulate the milling with both yields side-by-side for direct comparison
 Z_ref, Z_dist = simulate_milling_from_dwell_times(
