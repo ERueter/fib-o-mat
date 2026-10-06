@@ -57,79 +57,111 @@ def dwell_func(point: np.ndarray) -> QuantityType:
     x, y = point[0], point[1]
     r = np.sqrt(x * x + y * y)
 
-    # --------------------------------------------------------
-    # Geometrie
-    # --------------------------------------------------------
     R_sil = 5000.0       # nm
-    R_outer = 10000.0    # nm
-    R_blend = 1000#500.0      # nm
+    R_outer = 11000.0    # nm
+    R_blend = 1000.0     # nm
 
-    # Steilere Gerade, die weiterhin bei r = 10 µm
-    # auf Tiefe 0 endet
-    m_line = -1.2
-
-    # Tangentialpunkt Kugel -> 500-nm-Kreis
-    r_sphere_transition = 4988.894767357017
-
-    # Mittelpunkt des Übergangskreises
-    x_center = 5487.784244092719
-    z_center = 4633.633939498072
-
-    # Tangentialpunkt Kreis -> Gerade
-    r_line_transition = 5871.894883891407
-
-    # --------------------------------------------------------
-    # außerhalb
-    # --------------------------------------------------------
     if r > R_outer:
         return Q_(0, "microsecond")
 
-    # --------------------------------------------------------
-    # Kugelteil
-    # --------------------------------------------------------
-    if r <= r_sphere_transition:
-
-        depth = (
-            R_sil
-            - np.sqrt(
-                max(R_sil**2 - r**2, 0.0)
-            )
+    # ------------------------------------------------------------
+    # 1. Exakte Kugelhälfte
+    # ------------------------------------------------------------
+    if r <= R_sil:
+        depth = R_sil - np.sqrt(
+            max(R_sil**2 - r**2, 0.0)
         )
 
-    # --------------------------------------------------------
-    # 500-nm-Kreis
-    # --------------------------------------------------------
-    elif r <= r_line_transition:
-
-        depth = (
-            z_center
-            + np.sqrt(
-                max(
-                    R_blend**2
-                    - (r - x_center)**2,
-                    0.0
-                )
-            )
-        )
-
-    # --------------------------------------------------------
-    # linearer Teil
-    # --------------------------------------------------------
     else:
+        # --------------------------------------------------------
+        # 2. Blend-Kreis
+        # --------------------------------------------------------
+        x_center = R_sil + R_blend
+        z_center = R_sil
 
-        depth = (
-            m_line * (r - R_outer)
-        )
+        # --------------------------------------------------------
+        # 3. Tangentialpunkt des Kreises mit der Auslaufgeraden
+        #
+        # Die Gerade muss durch
+        #     P_outer = (R_outer, 0)
+        # gehen und den Kreis tangential berühren.
+        #
+        # Bedingung:
+        #   (P_t - C) · (P_t - P_outer) = 0
+        #
+        # Für den hier verwendeten oberen Kreisabschnitt ergibt sich
+        # der relevante Tangentialpunkt analytisch.
+        # --------------------------------------------------------
+        dx_outer = R_outer - x_center
+        dz_outer = -z_center
 
-    # Tiefe -> Dwell-Zeit
-    #
-    # 5000 nm entsprechen weiterhin 10 µs.
+        d2 = dx_outer**2 + dz_outer**2
+        d = np.sqrt(d2)
+
+        # Winkel vom Kreismittelpunkt zum äußeren Punkt
+        theta = np.arctan2(dz_outer, dx_outer)
+
+        # Winkel zwischen C->P_outer und C->P_t
+        alpha = np.arccos(R_blend / d)
+
+        # Relevanter Tangentialpunkt auf dem oberen Kreis
+        theta_t = theta + alpha
+
+        r_tangent = x_center + R_blend * np.cos(theta_t)
+        z_tangent = z_center + R_blend * np.sin(theta_t)
+
+        if r <= r_tangent:
+            # Kreisstück
+            dx = r - x_center
+
+            depth = z_center + np.sqrt(
+                max(R_blend**2 - dx**2, 0.0)
+            )
+
+        else:
+            # ----------------------------------------------------
+            # 3. Linearer Auslauf
+            #
+            # Gerade vom Tangentialpunkt bis
+            # (R_outer, 0).
+            # ----------------------------------------------------
+            m_line = (
+                0.0 - z_tangent
+            ) / (
+                R_outer - r_tangent
+            )
+
+            depth = z_tangent + m_line * (
+                r - r_tangent
+            )
+
     dwell = max_dwell_time * depth / R_sil
 
     return Q_(
         max(dwell, min_dwell_time),
         "microsecond"
     )
+
+import matplotlib.pyplot as plt
+
+# x-Achse von -R_outer bis +R_outer
+x_values = np.linspace(-15000, 15000, 2000)
+
+dwell_values = np.array([
+    dwell_func(np.array([x, 0.0])).magnitude
+    for x in x_values
+])
+
+plt.figure(figsize=(9, 5))
+plt.plot(x_values / 1000, dwell_values)
+
+plt.xlabel("x [µm]")
+plt.ylabel("Dwell time [µs]")
+plt.title("Querschnitt der dwell_func entlang der x-Achse")
+plt.grid(True, alpha=0.3)
+
+plt.tight_layout()
+plt.show()
 
 
 mill = DDDMill(dwell_func, 1)
