@@ -112,6 +112,13 @@ class TestDimFloat:
         assert a.quantity == 2 * ureg.m
 
 
+class _Holder:
+    @classmethod
+    @check_units
+    def create(cls, x: DimFloat[LengthDimension]) -> '_Holder':
+        return cls()
+
+
 class TestCheckUnits:
     def test_arguments_and_return(self):
         @check_units
@@ -124,6 +131,12 @@ class TestCheckUnits:
             double(1. * unit('s'))
         with pytest.raises(DimensionError):
             double(1.)
+
+    def test_annotations_are_resolved_on_the_first_call(self):
+        # the return annotation refers to a class which does not exist when the decorator is applied
+        assert isinstance(_Holder.create(1. * unit('m')), _Holder)
+        with pytest.raises(DimensionError):
+            _Holder.create(1. * unit('s'))
 
     def test_return_checked(self):
         @check_units

@@ -45,7 +45,8 @@ F = t.TypeVar('F', bound=t.Callable[..., t.Any])
 def check_units(func: F) -> F:
     """Decorator which validates at call time the dimensions of all arguments and the return value.
 
-    Every parameter (and the return value) annotated as ``SomeDimType[SomeDimension]``, where ``SomeDimType`` is
+    The annotations are evaluated on the first call (not when the function is decorated). Every parameter (and the
+    return value) annotated as ``SomeDimType[SomeDimension]``, where ``SomeDimType`` is
     :class:`DimFloat` or any other :class:`DimBase` subclass, must hold a value whose embedded pint quantities have
     that dimensionality. This is independent of static type checking and catches values a type checker cannot verify
     (data loaded at runtime, `Any`, ``# type: ignore``, ...).
@@ -60,12 +61,22 @@ def check_units(func: F) -> F:
         DimensionError: (raised by the wrapper) a value does not have the annotated dimension.
     """
     sig = inspect.signature(func)
-    hints = t.get_type_hints(func)
-    param_checks = list(_dimension_checks({k: v for k, v in hints.items() if k != 'return'}))
-    return_check = next(iter(_dimension_checks({'return': hints['return']})), None) if 'return' in hints else None
+    # The annotations are resolved on the first call, because they may refer to names which are not defined yet when
+    # the decorator is applied (e.g. a method of a class which returns this class).
+    checks: t.List[t.Any] = []
+
+    def resolve() -> None:
+        hints = t.get_type_hints(func)
+        param_checks = list(_dimension_checks({k: v for k, v in hints.items() if k != 'return'}))
+        return_check = next(iter(_dimension_checks({'return': hints['return']})), None) if 'return' in hints else None
+        checks.extend([param_checks, return_check])
 
     @functools.wraps(func)
     def wrapper(*args: t.Any, **kwargs: t.Any) -> t.Any:
+        if not checks:
+            resolve()
+        param_checks, return_check = checks
+
         bound = sig.bind(*args, **kwargs)
         bound.apply_defaults()
         for name, origin, dimension in param_checks:

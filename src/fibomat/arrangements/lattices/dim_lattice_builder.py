@@ -16,7 +16,7 @@ import typing as t
 from fibomat.arrangements.lattices.dim_lattice import DimLattice
 from fibomat.arrangements.lattices.lattice_builder_base import LatticeBuilderBase
 from fibomat.linalg import DimVector, DimVectorLike, Vector
-from fibomat.units import DimFloat, has_length_dim
+from fibomat.units import DimFloat, LengthDimension, check_units
 
 
 __all__ = ['DimLatticeBuilder']
@@ -40,8 +40,9 @@ class DimLatticeBuilder(LatticeBuilderBase):
         super().__init__(nu, nv, u, v, center)
 
     @classmethod
+    @check_units
     def rectangular(
-        cls, nu: int, nv: int, pitch_x: DimFloat[t.Any], pitch_y: DimFloat[t.Any],
+        cls, nu: int, nv: int, pitch_x: DimFloat[LengthDimension], pitch_y: DimFloat[LengthDimension],
         center: t.Optional[DimVectorLike] = None
     ) -> DimLatticeBuilder:
         """Builder of a lattice with orthogonal lattice vectors (`u` to the right, `v` down).
@@ -57,15 +58,8 @@ class DimLatticeBuilder(LatticeBuilderBase):
             DimLatticeBuilder
 
         Raises:
-            TypeError: Raised if a pitch is no dimensioned value.
-            ValueError: Raised if a pitch is no length.
+            DimensionError: Raised if a pitch is no dimensioned value or has not the dimension [length].
         """
-        for name, pitch in (('pitch_x', pitch_x), ('pitch_y', pitch_y)):
-            if not isinstance(pitch, DimFloat):
-                raise TypeError(f'{name} must be a dimensioned value like 5. * unit("µm"), got {type(pitch).__name__}.')
-            if not has_length_dim(pitch):
-                raise ValueError(f'{name} must have dimension [length].')
-
         zero = 0. * pitch_x
         return cls(nu, nv, DimVector(pitch_x, zero), DimVector(zero, -pitch_y), center)
 

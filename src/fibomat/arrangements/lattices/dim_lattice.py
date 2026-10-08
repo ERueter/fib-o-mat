@@ -21,7 +21,7 @@ from fibomat.arrangements.lattices.lattice_base import LatticeMixin, place_eleme
 from fibomat.arrangements.lattices.lattice_points import boundary_points, count_points, grid_points
 from fibomat.linalg import DimTransformable, DimVector, DimVectorLike, Vector
 from fibomat.shapes import DimShape
-from fibomat.units import DimFloat, LengthUnit, has_length_dim, scale_to
+from fibomat.units import DimFloat, LengthDimension, LengthUnit, check_units, scale_to
 
 
 __all__ = ['DimLattice']
@@ -32,18 +32,12 @@ ElementOrCallback = t.Union[
 ]
 
 
-def _length(value: t.Any, unit: LengthUnit, name: str, allow_zero: bool) -> float:
-    """A length as float in `unit`.
+def _length(value: DimFloat[LengthDimension], unit: LengthUnit, name: str, allow_zero: bool) -> float:
+    """A length as float in `unit`. That `value` is a length is checked by :func:`~fibomat.units.check_units`.
 
     Raises:
-        TypeError: Raised if `value` is not a dimensioned value.
-        ValueError: Raised if it is not a length or not positive (negative).
+        ValueError: Raised if the length is not positive (or negative if `allow_zero`).
     """
-    if not isinstance(value, DimFloat):
-        raise TypeError(f'{name} must be a dimensioned value like 5. * unit("µm"), got {type(value).__name__}.')
-    if not has_length_dim(value):
-        raise ValueError(f'{name} must have dimension [length].')
-
     magnitude = scale_to(unit, value)
     if magnitude < 0. or (magnitude == 0. and not allow_zero):
         raise ValueError(f'{name} must be {"not negative" if allow_zero else "positive"}, got {value!r}.')
@@ -105,12 +99,13 @@ class DimLattice(LatticeMixin, DimGroup):
         return cls(elements, kept_indices, u, v, description)
 
     @classmethod
+    @check_units
     def from_rect(
         cls,
-        width: DimFloat[t.Any],
-        height: DimFloat[t.Any],
-        pitch_x: DimFloat[t.Any],
-        pitch_y: DimFloat[t.Any],
+        width: DimFloat[LengthDimension],
+        height: DimFloat[LengthDimension],
+        pitch_x: DimFloat[LengthDimension],
+        pitch_y: DimFloat[LengthDimension],
         element: ElementOrCallback,
         *,
         center: t.Optional[DimVectorLike] = None,
@@ -140,38 +135,26 @@ class DimLattice(LatticeMixin, DimGroup):
             DimLattice
 
         Raises:
-            TypeError: Raised if a length is no dimensioned value or an element is not valid.
-            ValueError: Raised if a length has the wrong dimension, the size is negative, a pitch is not positive, or
+            DimensionError: Raised if a length is no dimensioned value or has not the dimension [length].
+            TypeError: Raised if an element is not valid.
+            ValueError: Raised if the size is negative, a pitch is not positive, or
                 there are no elements.
         """
-        unit = cls._unit_of(pitch_x, 'pitch_x')
+        unit = pitch_x.units
         n_x = count_points(_length(width, unit, 'width', True), _length(pitch_x, unit, 'pitch_x', False))
         n_y = count_points(_length(height, unit, 'height', True), _length(pitch_y, unit, 'pitch_y', False))
         return cls.from_counts(
             n_x, n_y, pitch_x, pitch_y, element, center=center, fast_axis=fast_axis, description=description
         )
 
-    @staticmethod
-    def _unit_of(length: t.Any, name: str) -> LengthUnit:
-        """The unit of a dimensioned length (used for the calculations).
-
-        Raises:
-            TypeError: Raised if `length` is no dimensioned value.
-            ValueError: Raised if it is no length.
-        """
-        if not isinstance(length, DimFloat):
-            raise TypeError(f'{name} must be a dimensioned value like 5. * unit("µm"), got {type(length).__name__}.')
-        if not has_length_dim(length):
-            raise ValueError(f'{name} must have dimension [length].')
-        return length.units
-
     @classmethod
+    @check_units
     def from_counts(
         cls,
         n_x: int,
         n_y: int,
-        pitch_x: DimFloat[t.Any],
-        pitch_y: DimFloat[t.Any],
+        pitch_x: DimFloat[LengthDimension],
+        pitch_y: DimFloat[LengthDimension],
         element: ElementOrCallback,
         *,
         center: t.Optional[DimVectorLike] = None,
@@ -197,11 +180,12 @@ class DimLattice(LatticeMixin, DimGroup):
             DimLattice
 
         Raises:
-            TypeError: Raised if a pitch is no dimensioned value or an element is not valid.
-            ValueError: Raised if a number of points is less than 1, a pitch is not a positive length, or there are no
+            DimensionError: Raised if a pitch is no dimensioned value or has not the dimension [length].
+            TypeError: Raised if an element is not valid.
+            ValueError: Raised if a number of points is less than 1, a pitch is not positive, or there are no
                 elements.
         """
-        unit = cls._unit_of(pitch_x, 'pitch_x')
+        unit = pitch_x.units
         du = _length(pitch_x, unit, 'pitch_x', False)
         dv = _length(pitch_y, unit, 'pitch_y', False)
 

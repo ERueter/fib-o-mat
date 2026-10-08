@@ -15,7 +15,7 @@ from fibomat.linalg import DimVector, Vector
 from fibomat.mill import Mill
 from fibomat.raster_styles import ScanSequence, one_d
 from fibomat.shapes import ArcSpline, Circle, DimShape, Line, Polygon, Rect
-from fibomat.units import unit
+from fibomat.units import DimensionError, unit
 
 
 def um(x, y):
@@ -564,8 +564,9 @@ class TestDimLattice:
             Lattice.from_counts(1, 1, 1., 1., Circle(1.)) * 2
 
     @pytest.mark.parametrize('kwargs, exception', [
-        (dict(pitch_x=5., pitch_y=5. * unit('µm')), TypeError),
-        (dict(pitch_x=5. * unit('s'), pitch_y=5. * unit('µm')), ValueError),
+        (dict(pitch_x=5., pitch_y=5. * unit('µm')), DimensionError),
+        (dict(pitch_x=5. * unit('s'), pitch_y=5. * unit('µm')), DimensionError),
+        (dict(pitch_x=5. * unit('µm'), pitch_y=5. * unit('s')), DimensionError),
         (dict(pitch_x=0. * unit('µm'), pitch_y=5. * unit('µm')), ValueError),
         (dict(pitch_x=5. * unit('µm'), pitch_y=-5. * unit('µm')), ValueError),
         (dict(pitch_x=5. * unit('µm'), pitch_y=5. * unit('µm'), element=Circle(1.)), TypeError),
@@ -581,6 +582,12 @@ class TestDimLattice:
             DimLattice.from_rect(10., 5. * unit('µm'), 1. * unit('µm'), 1. * unit('µm'), Circle(1.) * unit('µm'))
         with pytest.raises(ValueError):
             DimLattice.from_rect(-1. * unit('µm'), 5. * unit('µm'), 1. * unit('µm'), 1. * unit('µm'), Circle(1.) * unit('µm'))
+
+    def test_from_rect_checks_dimensions(self):
+        with pytest.raises(DimensionError, match='width'):
+            DimLattice.from_rect(5. * unit('s'), 5. * unit('µm'), 1. * unit('µm'), 1. * unit('µm'), Circle(0.1) * unit('µm'))
+        with pytest.raises(DimensionError, match='pitch_y'):
+            DimLattice.from_rect(5. * unit('µm'), 5. * unit('µm'), 1. * unit('µm'), 1., Circle(0.1) * unit('µm'))
 
     def test_invalid_boundary(self):
         with pytest.raises(TypeError, match='DimShape'):
@@ -684,9 +691,9 @@ class TestBuilders:
         builder = DimLatticeBuilder.rectangular(2, 2, 10. * unit('µm'), 10. * unit('µm'))
         with pytest.raises(TypeError, match='need units'):
             builder[0, 0] = Circle(1.)
-        with pytest.raises(TypeError):
+        with pytest.raises(DimensionError):
             DimLatticeBuilder.rectangular(2, 2, 10., 10. * unit('µm'))
-        with pytest.raises(ValueError):
+        with pytest.raises(DimensionError):
             DimLatticeBuilder.rectangular(2, 2, 10. * unit('s'), 10. * unit('µm'))
         with pytest.raises(ValueError, match='element'):
             builder.to_lattice()

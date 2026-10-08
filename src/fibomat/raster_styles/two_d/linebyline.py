@@ -13,6 +13,7 @@ Example:
     >>> pattern.dwell_points.shape  # two lines (y = 0 and y = -0.5) with three points each
     (6, 3)
 """
+
 from __future__ import annotations
 
 import math
@@ -21,21 +22,27 @@ import typing as t
 from fibomat.curve_tools import fill_with_lines
 from fibomat.mill import Mill
 from fibomat.raster_styles._helpers import check_length
+from fibomat.raster_styles.one_d.curve import Curve
 from fibomat.raster_styles.rasterstyle import RasterStyle
 from fibomat.raster_styles.scansequence import ScanSequence, _apply_scan_sequence
 from fibomat.rasterizedpattern import RasterizedPattern
 from fibomat.shapes import DimShape
 from fibomat.shapes._line_non_continuous import LineNonContinuous
 from fibomat.shapes.arc_spline import ArcSplineCompatible
-from fibomat.units import DimFloat, LengthDimension, LengthUnit, TimeUnit, scale_to
-
+from fibomat.units import (
+    DimFloat,
+    LengthDimension,
+    LengthUnit,
+    TimeUnit,
+    scale_to,
+)
 
 if t.TYPE_CHECKING:  # pragma: no cover
     from fibomat.composite_shapes.hollow_arc_spline import HollowArcSpline
     from fibomat.shapes.arc_spline import ArcSpline
 
 
-__all__ = ['LineByLine']
+__all__ = ["LineByLine"]
 
 
 def _filling_shape(shape: t.Any) -> t.Union[ArcSpline, HollowArcSpline]:
@@ -51,19 +58,21 @@ def _filling_shape(shape: t.Any) -> t.Union[ArcSpline, HollowArcSpline]:
     Raises:
         TypeError: Raised if the shape cannot be filled.
     """
-    from fibomat.composite_shapes.hollow_arc_spline import HollowArcSpline  # pylint: disable=import-outside-toplevel
+    from fibomat.composite_shapes.hollow_arc_spline import (
+        HollowArcSpline,  # pylint: disable=import-outside-toplevel
+    )
 
     if isinstance(shape, HollowArcSpline):
         return shape
 
-    to_hollow = getattr(shape, 'to_hollow_arc_spline', None)
+    to_hollow = getattr(shape, "to_hollow_arc_spline", None)
     if callable(to_hollow):
         return to_hollow()
 
     if isinstance(shape, ArcSplineCompatible):
         return shape.to_arc_spline()
 
-    raise TypeError(f'Cannot fill a shape of type {type(shape).__name__}.')
+    raise TypeError(f"Cannot fill a shape of type {type(shape).__name__}.")
 
 
 class LineByLine(RasterStyle):
@@ -95,24 +104,41 @@ class LineByLine(RasterStyle):
             ValueError: Raised if line_pitch is not a positive length, alpha is not in [-pi/2, pi/2], or line_style
                 is not a raster style for curves.
         """
-        self._line_pitch = check_length(line_pitch, 'line_pitch')
+        self._line_pitch = check_length(line_pitch, "line_pitch")
 
         alpha = float(alpha)
         if not -math.pi / 2 <= alpha <= math.pi / 2:
-            raise ValueError('alpha must be in [-pi/2, pi/2].')
+            raise ValueError("alpha must be in [-pi/2, pi/2].")
         self._alpha = alpha
 
         self._invert = bool(invert)
         self._scan_sequence = ScanSequence.parse(scan_sequence)
 
         if not isinstance(line_style, RasterStyle) or line_style.dimension != 1:
-            raise ValueError('line_style must be a raster style with dimension == 1.')
+            raise ValueError("line_style must be a raster style with dimension == 1.")
         self._line_style = line_style
 
     def __repr__(self) -> str:
         return (
-            f'{self.__class__.__name__}(line_pitch={self._line_pitch!r}, alpha={self._alpha!r}, '
-            f'invert={self._invert!r}, scan_sequence={self._scan_sequence!r}, line_style={self._line_style!r})'
+            f"{self.__class__.__name__}(line_pitch={self._line_pitch!r}, alpha={self._alpha!r}, "
+            f"invert={self._invert!r}, scan_sequence={self._scan_sequence!r}, line_style={self._line_style!r})"
+        )
+
+    @classmethod
+    def make_equal_pitch(
+        cls: t.Type[t.Self],
+        pitch: DimFloat[LengthDimension],
+        *,
+        scan_sequence: t.Union[ScanSequence, str] = ScanSequence.CONSECUTIVE,
+        alpha: float = 0.0,
+        invert: bool = False,
+    ):
+        return cls(
+            line_pitch=pitch,
+            scan_sequence=scan_sequence,
+            alpha=alpha,
+            invert=invert,
+            line_style=Curve(pitch, ScanSequence.CONSECUTIVE),
         )
 
     @property

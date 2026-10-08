@@ -2,6 +2,15 @@
 
 All notable changes to this project are documented in this file.
 
+## [Unreleased]
+
+### Changed
+- **Breaking:** the lengths of `DimLattice.from_counts`, `DimLattice.from_rect` and `DimLatticeBuilder.rectangular` are annotated as `DimFloat[LengthDimension]` and checked with `check_units`: a value without a unit or with another dimension raises a `DimensionError` (a `TypeError`; before: `TypeError` for plain numbers and `ValueError` for other dimensions). Negative or zero lengths still raise `ValueError`.
+- `check_units` resolves the annotations on the first call, so methods can be annotated with the class they belong to.
+
+### Fixed
+- The API reference pages (`docs/api/`) were not part of the repository (they were ignored by `.gitignore`), so the hosted documentation had no API reference.
+
 ## [0.7.1] - 2026-10-07
 
 ### Fixed
