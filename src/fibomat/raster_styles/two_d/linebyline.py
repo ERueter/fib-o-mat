@@ -126,6 +126,50 @@ class LineByLine(RasterStyle):
             f"invert={self._invert!r}, scan_sequence={self._scan_sequence!r}, line_style={self._line_style!r})"
         )
 
+    @classmethod
+    def make_equal_pitch(
+        cls,
+        pitch: DimFloat[LengthDimension],
+        *,
+        scan_sequence: t.Union[ScanSequence, str] = ScanSequence.CONSECUTIVE,
+        alpha: float = 0.0,
+        invert: bool = False,
+    ) -> LineByLine:
+        """Create a line by line raster style where the distance between the lines is equal to the distance between the
+        spots on the lines.
+
+        The lines are exposed with a :class:`~fibomat.raster_styles.one_d.Curve` with the same `pitch` and the scan
+        sequence ``CONSECUTIVE``.
+
+        Example:
+            >>> from fibomat.units import unit
+            >>> style = LineByLine.make_equal_pitch(0.5 * unit('µm'))
+            >>> style.line_pitch == style.line_style.pitch
+            True
+
+        Args:
+            pitch (DimFloat[LengthDimension]): distance between the lines and between the spots on a line, e.g.
+                ``0.5 * unit('µm')``.
+            scan_sequence (ScanSequence, str): order in which the lines are exposed, default ``CONSECUTIVE``.
+            alpha (float): angle between the lines and the x-axis in [-pi/2, pi/2].
+            invert (bool): if False, the lines are created from the top to the bottom (with respect to the rotated
+                frame), from the bottom to the top otherwise.
+
+        Returns:
+            LineByLine
+
+        Raises:
+            DimensionError: Raised if `pitch` is not a dimensioned value or has not the dimension [length].
+            ValueError: Raised if `pitch` is not positive or `alpha` is not in [-pi/2, pi/2].
+        """
+        return cls(
+            line_pitch=pitch,
+            scan_sequence=scan_sequence,
+            alpha=alpha,
+            invert=invert,
+            line_style=Curve(pitch, ScanSequence.CONSECUTIVE),
+        )
+
     @property
     def dimension(self) -> int:
         return 2
