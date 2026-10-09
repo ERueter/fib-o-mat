@@ -34,7 +34,13 @@ charge and ``(1 * ureg.coulomb).to('ions')`` to ``1 coulomb / elementary_charge`
 * ``[areadose]``: ``[current] * [time] / [length] ** 2``
 
 are available as derived dimensions (see :class:`SpotDoseDimension`, :class:`LineDoseDimension` and
-:class:`AreaDoseDimension`).
+:class:`AreaDoseDimension`). Beam currents (``unit('pA')``) have the dimension :class:`CurrentDimension` and ion fluxes
+(current per area) :class:`CurrentDensityDimension`.
+
+All public functions which take dimensioned values are decorated with :func:`check_units` and annotated with the
+expected dimension. A missing unit or a wrong dimension raises a :class:`DimensionError`. :func:`check_units` also
+validates ``Optional``, ``Union`` and ``Tuple`` annotations of dimensioned values. See the user guide (``Units``) for a
+detailed introduction.
 
 The submodules are:
 
@@ -57,7 +63,7 @@ from __future__ import annotations
 
 from fibomat.units.registry import ureg
 from fibomat.units.typing_aliases import UnitType, QuantityType, LengthUnit, TimeUnit, LengthQuantity, TimeQuantity
-from fibomat.units.dimensions import DimensionError, Dimension, LengthDimension, TimeDimension, DimensionlessDimension, SpotDoseDimension, LineDoseDimension, AreaDoseDimension
+from fibomat.units.dimensions import DimensionError, Dimension, LengthDimension, TimeDimension, DimensionlessDimension, CurrentDimension, CurrentDensityDimension, SpotDoseDimension, LineDoseDimension, AreaDoseDimension
 from fibomat.units.unit_table import UNIT_DIMENSIONS
 from fibomat.units.dim_base import DimBase
 from fibomat.units.dim_float import DimFloat
@@ -80,6 +86,8 @@ __all__ = [
     'LengthDimension',
     'TimeDimension',
     'DimensionlessDimension',
+    'CurrentDimension',
+    'CurrentDensityDimension',
     'SpotDoseDimension',
     'LineDoseDimension',
     'AreaDoseDimension',

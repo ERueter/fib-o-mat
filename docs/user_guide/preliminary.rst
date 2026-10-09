@@ -114,6 +114,8 @@ Alternatively, the methods of :class:`~fibomat.units.DimFloat` can be used ::
 
 .. note:: Older versions of fib-o-mat used ``Q_`` and ``U_`` for quantities and units. ``U_`` is an alias of :func:`~fibomat.units.unit` and ``Q_`` is deprecated.
 
+The unit system, the dimensions and the dimension checks of the functions are explained in detail in :doc:`units`.
+
 The code of this section can be found in `examples/units.py <https://github.com/fib-o-mat/fib-o-mat/blob/main/examples/units.py>`__.
 
 Immutability

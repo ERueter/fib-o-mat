@@ -8,14 +8,15 @@ import numpy as np
 
 from fibomat.mill import Mill
 from fibomat.rasterizedpattern import RasterizedPattern
-from fibomat.units import DimFloat, LengthUnit, TimeUnit, has_length_dim, scale_factor, scale_to
+from fibomat.units import DimFloat, LengthDimension, LengthUnit, TimeUnit, scale_factor, scale_to
 
 
 __all__ = ['check_length', 'dwell_time_in', 'apply_repeats', 'empty_pattern', 'position_scale']
 
 
-def check_length(value: DimFloat[t.Any], name: str) -> DimFloat[t.Any]:
-    """Check that `value` is a positive, finite length.
+def check_length(value: DimFloat[LengthDimension], name: str) -> DimFloat[LengthDimension]:
+    """Check that the length `value` is positive and finite. That `value` is a length must be checked by the caller
+    (see :func:`~fibomat.units.check_units`).
 
     Args:
         value (DimFloat): value to be checked, e.g. ``0.5 * unit('µm')``
@@ -25,15 +26,8 @@ def check_length(value: DimFloat[t.Any], name: str) -> DimFloat[t.Any]:
         DimFloat: `value`
 
     Raises:
-        TypeError: Raised if `value` is not a dimensioned value (e.g. a float).
-        ValueError: Raised if `value` has not the dimension [length] or is not positive and finite.
+        ValueError: Raised if `value` is not positive and finite.
     """
-    if not isinstance(value, DimFloat):
-        raise TypeError(f'{name} must be a dimensioned value like 0.5 * unit("µm"), got {type(value).__name__}.')
-
-    if not has_length_dim(value):
-        raise ValueError(f'{name} must have dimension [length].')
-
     if not math.isfinite(value.magnitude) or value.magnitude <= 0.:
         raise ValueError(f'{name} must be positive and finite, got {value!r}.')
 

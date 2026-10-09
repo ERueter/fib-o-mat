@@ -31,7 +31,7 @@ from fibomat.layout.pattern import Pattern
 from fibomat.layout.site import Site
 from fibomat.linalg import Vector
 from fibomat.shapes import Circle, DimShape, Ellipse, Line, Polygon, Polyline, Rect, Spot
-from fibomat.units import DimFloat, has_length_dim, scale_factor, unit
+from fibomat.units import DimFloat, LengthDimension, check_units, scale_factor, unit
 from fibomat.utils import PathLike
 
 
@@ -61,12 +61,13 @@ class StepAndRepeatBackend(BackendBase):
     Patterns with the keyword argument ``use_bitmap`` are exported as bitmap texture (this needs the bitmap backend).
     """
 
+    @check_units
     def __init__(
         self,
         share_patterns: bool = False,
         skip_empty_sites: bool = True,
         description: t.Optional[str] = None,
-        approximation_error: t.Optional[DimFloat[t.Any]] = None,
+        approximation_error: t.Optional[DimFloat[LengthDimension]] = None,
     ):
         """
         Args:
@@ -80,17 +81,15 @@ class StepAndRepeatBackend(BackendBase):
                 their polygonal approximation, default ``0.0025 * unit('µm')``.
 
         Raises:
-            TypeError: Raised if approximation_error is no dimensioned value.
-            ValueError: Raised if approximation_error is no positive length.
+            DimensionError: Raised if approximation_error is no dimensioned value or has not the dimension [length].
+            ValueError: Raised if approximation_error is not positive.
         """
         super().__init__(description)
 
         if approximation_error is None:
             approximation_error = 0.0025 * _MICRON
-        if not isinstance(approximation_error, DimFloat):
-            raise TypeError('approximation_error must be a dimensioned value like 0.0025 * unit("µm").')
-        if not has_length_dim(approximation_error) or not approximation_error.magnitude > 0.:
-            raise ValueError('approximation_error must be a positive length.')
+        if not approximation_error.magnitude > 0.:
+            raise ValueError('approximation_error must be positive.')
         self._approximation_error = approximation_error.m_as('µm')
 
         self._warned_about_spot_dose = False

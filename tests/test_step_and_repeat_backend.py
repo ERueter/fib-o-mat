@@ -16,7 +16,7 @@ from fibomat.default_backends.npve import (
 from fibomat.layout import Layout
 from fibomat.raster_styles import ScanSequence, one_d, two_d, zero_d
 from fibomat.shapes import Circle, Ellipse, Rect, Spot, Line, ArcSpline
-from fibomat.units import unit
+from fibomat.units import DimensionError, unit
 
 import sar_corpus
 from sar_corpus import curve, dose_mill, lines, outlined, repeats_mill, single_site, um
@@ -216,11 +216,12 @@ class TestBackend:
                 StepAndRepeatBackend
             )
 
-    @pytest.mark.parametrize('error', [0. * unit('µm'), 1. * unit('s')])
-    def test_invalid_approximation_error(self, error):
-        with pytest.raises(ValueError):
-            StepAndRepeatBackend(approximation_error=error)
-        with pytest.raises(TypeError):
+    def test_invalid_approximation_error(self):
+        with pytest.raises(ValueError, match='positive'):
+            StepAndRepeatBackend(approximation_error=0. * unit('µm'))
+        with pytest.raises(DimensionError):
+            StepAndRepeatBackend(approximation_error=1. * unit('s'))
+        with pytest.raises(DimensionError):
             StepAndRepeatBackend(approximation_error=0.01)
 
     def test_bitmap_patterns(self, monkeypatch):
@@ -287,9 +288,9 @@ class TestNPVEMill:
             NPVEMill(dwell_time=1. * unit('µs'))
         with pytest.raises(ValueError, match='not both'):
             NPVEMill(dwell_time=1. * unit('µs'), repeats=1, dose=1. * unit('ions'))
-        with pytest.raises(TypeError, match='dimensioned'):
+        with pytest.raises(DimensionError, match='dwell_time'):
             NPVEMill(dwell_time=1., repeats=1)
-        with pytest.raises(ValueError, match='positive time'):
+        with pytest.raises(DimensionError, match='dwell_time'):
             NPVEMill(dwell_time=1. * unit('µm'), repeats=1)
         with pytest.raises(ValueError):
             NPVEMill(dwell_time=0. * unit('µs'), repeats=1)
@@ -299,9 +300,9 @@ class TestNPVEMill:
         for repeats in (1.5, 'a', True):
             with pytest.raises(TypeError):
                 NPVEMill(dwell_time=1. * unit('µs'), repeats=repeats)
-        with pytest.raises(TypeError):
+        with pytest.raises(DimensionError):
             NPVEMill(dwell_time=1. * unit('µs'), dose=1.)
-        with pytest.raises(ValueError, match='dose'):
+        with pytest.raises(DimensionError, match='dose'):
             NPVEMill(dwell_time=1. * unit('µs'), dose=1. * unit('µm'))
         with pytest.raises(ValueError):
             NPVEMill(dwell_time=1. * unit('µs'), dose=-1. * unit('ions'))

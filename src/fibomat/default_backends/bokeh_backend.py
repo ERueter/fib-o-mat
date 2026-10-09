@@ -36,7 +36,7 @@ from fibomat.layout.pattern import Pattern
 from fibomat.layout.site import Site
 from fibomat.shapes import DimShape
 from fibomat.linalg import DimVector
-from fibomat.units import DimFloat, LengthUnit, has_length_dim, scale_factor
+from fibomat.units import DimFloat, LengthDimension, LengthUnit, check_units, scale_factor
 from fibomat.units import unit as make_unit
 from fibomat.utils import PathLike
 
@@ -64,13 +64,14 @@ class BokehBackend(BackendBase):
     be accessed with :attr:`fig`.
     """
 
+    @check_units
     def __init__(
         self,
         *,
         unit: t.Optional[LengthUnit] = None,  # pylint: disable=redefined-outer-name
         title: t.Optional[str] = None,
         hide_sites: bool = False,
-        rasterize_pitch: t.Optional[DimFloat[t.Any]] = None,
+        rasterize_pitch: t.Optional[DimFloat[LengthDimension]] = None,
         fullscreen: bool = True,
         legend: bool = True,
         cycle_colors: bool = True,
@@ -99,8 +100,8 @@ class BokehBackend(BackendBase):
             description (str, optional): description of the layout
 
         Raises:
-            ValueError: Raised if unit or rasterize_pitch are no lengths or rasterize_pitch is not positive.
-            TypeError: Raised if rasterize_pitch is no dimensioned value.
+            DimensionError: Raised if rasterize_pitch is no dimensioned value or has not the dimension [length].
+            ValueError: Raised if unit is no length or rasterize_pitch is not positive.
         """
         super().__init__(description)
 
@@ -109,10 +110,6 @@ class BokehBackend(BackendBase):
 
         if rasterize_pitch is None:
             rasterize_pitch = _DEFAULT_RASTERIZE_PITCH
-        if not isinstance(rasterize_pitch, DimFloat):
-            raise TypeError('rasterize_pitch must be a dimensioned value like 0.001 * unit("µm").')
-        if not has_length_dim(rasterize_pitch):
-            raise ValueError("rasterize_pitch's dimension must be [length].")
         if not rasterize_pitch.magnitude > 0.:
             raise ValueError('rasterize_pitch must be positive.')
         self._rasterize_pitch = rasterize_pitch

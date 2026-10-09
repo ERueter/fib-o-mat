@@ -15,20 +15,16 @@ import operator
 import typing as t
 
 from fibomat.mill import MillBase
-from fibomat.units import DimFloat, ureg, has_time_dim
+from fibomat.units import (
+    AreaDoseDimension, DimFloat, LineDoseDimension, SpotDoseDimension, TimeDimension, check_units
+)
 
 
 __all__ = ['NPVEMill']
 
 
-_CHARGE = ureg.get_dimensionality('[current] * [time]')
-
-
-def _is_dose(dose: DimFloat[t.Any]) -> bool:
-    """True if a value is a dose: a charge (spot), a charge per length (curve) or a charge per area (area)."""
-    dimensionality = dose.quantity.dimensionality
-    return dimensionality in (_CHARGE, _CHARGE / ureg.get_dimensionality('[length]'),
-                              _CHARGE / ureg.get_dimensionality('[length] ** 2'))
+Dose = t.Union[DimFloat[SpotDoseDimension], DimFloat[LineDoseDimension], DimFloat[AreaDoseDimension]]
+"""A dose: a charge (spot), a charge per length (curve) or a charge per area (area)."""
 
 
 class NPVEMill(MillBase):
@@ -39,12 +35,13 @@ class NPVEMill(MillBase):
     charge per length for curves (e.g. ``unit('nC/µm')``) and a charge per area for areas (e.g. ``unit('nC/µm**2')``).
     """
 
+    @check_units
     def __init__(
         self,
         *,
-        dwell_time: DimFloat[t.Any],
+        dwell_time: DimFloat[TimeDimension],
         repeats: t.Optional[int] = None,
-        dose: t.Optional[DimFloat[t.Any]] = None,
+        dose: t.Optional[Dose] = None,
         scan_direction: t.Optional[float] = None,
         **kwargs: t.Any,
     ):
@@ -57,17 +54,16 @@ class NPVEMill(MillBase):
             **kwargs: further settings of the mill
 
         Raises:
-            TypeError: Raised if dwell_time or dose are no dimensioned values or repeats is no integer.
+            DimensionError: Raised if dwell_time or dose are no dimensioned values or have a wrong dimension.
+            TypeError: Raised if repeats is no integer.
             ValueError: Raised if repeats and dose are both given or both missing, dwell_time is not a positive time,
                 repeats is less than 1 or dose is not a positive dose.
         """
         if (repeats is not None and dose is not None) or (repeats is None and dose is None):
             raise ValueError('One of repeats or dose must be given and not both or none of them.')
 
-        if not isinstance(dwell_time, DimFloat):
-            raise TypeError('dwell_time must be a dimensioned value like 1. * unit("µs").')
-        if not has_time_dim(dwell_time) or not dwell_time.magnitude > 0.:
-            raise ValueError('dwell_time must be a positive time.')
+        if not dwell_time.magnitude > 0.:
+            raise ValueError('dwell_time must be positive.')
 
         if repeats is not None:
             if isinstance(repeats, bool):
@@ -79,11 +75,8 @@ class NPVEMill(MillBase):
             if repeats < 1:
                 raise ValueError('repeats must be at least 1.')
 
-        if dose is not None:
-            if not isinstance(dose, DimFloat):
-                raise TypeError('dose must be a dimensioned value like 2. * unit("nC / µm**2").')
-            if not _is_dose(dose) or not dose.magnitude > 0.:
-                raise ValueError('dose must be a positive charge, charge per length or charge per area.')
+        if dose is not None and not dose.magnitude > 0.:
+            raise ValueError('dose must be positive.')
 
         if scan_direction is not None:
             scan_direction = float(scan_direction)
@@ -93,7 +86,7 @@ class NPVEMill(MillBase):
         super().__init__(dwell_time=dwell_time, repeats=repeats, dose=dose, **kwargs)
 
     @property
-    def dwell_time(self) -> DimFloat[t.Any]:
+    def dwell_time(self) -> DimFloat[TimeDimension]:
         """Dwell time per spot.
 
         Access:
@@ -111,7 +104,7 @@ class NPVEMill(MillBase):
         return self._kwargs['repeats']
 
     @property
-    def dose(self) -> t.Optional[DimFloat[t.Any]]:
+    def dose(self) -> t.Optional[Dose]:
         """Dose, None if the number of repeats is given.
 
         Access:

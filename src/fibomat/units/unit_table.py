@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import typing as t
 
-from fibomat.units.dimensions import Dimension, LengthDimension, TimeDimension
+from fibomat.units.dimensions import CurrentDimension, Dimension, LengthDimension, TimeDimension
 
 
 __all__ = ['UNIT_DIMENSIONS']
@@ -19,4 +19,6 @@ for _symbol in ('m', 'km', 'cm', 'mm', 'um', 'µm', 'nm', 'mi', 'yd', 'ft', 'in'
     UNIT_DIMENSIONS[_symbol] = LengthDimension
 for _symbol in ('s', 'ms', 'us', 'µs', 'ns', 'min', 'h', 'day'):
     UNIT_DIMENSIONS[_symbol] = TimeDimension
+for _symbol in ('A', 'mA', 'uA', 'µA', 'nA', 'pA', 'fA'):
+    UNIT_DIMENSIONS[_symbol] = CurrentDimension
 del _symbol

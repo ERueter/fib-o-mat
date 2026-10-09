@@ -15,7 +15,7 @@ import operator
 import typing as t
 
 from fibomat.mill.mill_base import MillBase
-from fibomat.units import DimFloat, TimeDimension, has_time_dim
+from fibomat.units import DimFloat, TimeDimension, check_units
 
 
 __all__ = ['Mill']
@@ -27,6 +27,7 @@ class Mill(MillBase):
     The settings are available as properties and as items (``mill['dwell_time']``, ``mill['repeats']``).
     """
 
+    @check_units
     def __init__(self, dwell_time: DimFloat[TimeDimension], repeats: int):
         """
         Args:
@@ -34,19 +35,11 @@ class Mill(MillBase):
             repeats (int): number of repeats (at least 1)
 
         Raises:
-            TypeError: Raised if dwell_time is not a dimensioned value (e.g. a float or a plain pint quantity) or
-                repeats is not an integer.
-            ValueError: Raised if dwell_time has not the dimension [time] or is not positive and finite, or if repeats
-                is less than 1.
+            DimensionError: Raised if dwell_time is not a dimensioned value (e.g. a float or a plain pint quantity) or
+                has not the dimension [time].
+            TypeError: Raised if repeats is not an integer.
+            ValueError: Raised if dwell_time is not positive and finite, or if repeats is less than 1.
         """
-        if not isinstance(dwell_time, DimFloat):
-            raise TypeError(
-                f'dwell_time must be a dimensioned value like 2. * unit("ms"), got {type(dwell_time).__name__}.'
-            )
-
-        if not has_time_dim(dwell_time):
-            raise ValueError('dwell_time must have dimension [time].')
-
         if not math.isfinite(dwell_time.magnitude) or dwell_time.magnitude <= 0.:
             raise ValueError(f'dwell_time must be positive and finite, got {dwell_time!r}.')
 

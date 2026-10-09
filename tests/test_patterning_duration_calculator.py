@@ -7,7 +7,7 @@ from fibomat.linalg import DimVector
 from fibomat.mill import Mill
 from fibomat.raster_styles import ScanSequence, one_d, two_d, zero_d
 from fibomat.shapes import Circle, Line, Rect, Spot
-from fibomat.units import unit
+from fibomat.units import DimensionError, unit
 
 
 def um(x, y):
@@ -41,9 +41,9 @@ class TestConstruction:
         assert PatterningDurationCalculator(2. * unit('nA')).current == 2. * unit('nA')
 
     def test_invalid_current(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(DimensionError):
             PatterningDurationCalculator(1.)
-        with pytest.raises(ValueError, match='current'):
+        with pytest.raises(DimensionError, match='current'):
             PatterningDurationCalculator(1. * unit('s'))
         with pytest.raises(ValueError):
             PatterningDurationCalculator(-1. * unit('nA'))

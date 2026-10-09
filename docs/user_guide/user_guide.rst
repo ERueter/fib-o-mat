@@ -25,6 +25,7 @@ All sections marked with a test tube |:test_tube:| describe advanced features of
 
     Installation <installation>
     Preliminary <preliminary>
+    Units <units>
     General structure <general_structure>
     Geometric shapes <geometric-shapes>
     Mill & rasterization settings <mill_rasterizing>

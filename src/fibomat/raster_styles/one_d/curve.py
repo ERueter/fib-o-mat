@@ -24,7 +24,7 @@ from fibomat.raster_styles.rasterstyle import RasterStyle
 from fibomat.raster_styles.scansequence import ScanSequence, _swap_pairs
 from fibomat.rasterizedpattern import RasterizedPattern
 from fibomat.shapes import DimShape
-from fibomat.units import DimFloat, LengthDimension, LengthUnit, TimeUnit, scale_to
+from fibomat.units import DimFloat, LengthDimension, LengthUnit, TimeUnit, check_units, scale_to
 
 
 __all__ = ['Curve']
@@ -40,6 +40,7 @@ class Curve(RasterStyle):
     a multiple of the pitch.
     """
 
+    @check_units
     def __init__(self, pitch: DimFloat[LengthDimension], scan_sequence: t.Union[ScanSequence, str]):
         """
         Args:
@@ -47,8 +48,8 @@ class Curve(RasterStyle):
             scan_sequence (ScanSequence, str): ``CONSECUTIVE``, ``BACKSTITCH`` or ``BACK_AND_FORTH``.
 
         Raises:
-            TypeError: Raised if pitch is not a dimensioned value.
-            ValueError: Raised if pitch is not a positive length or the scan sequence is not supported.
+            DimensionError: Raised if pitch is not a dimensioned value or has not the dimension [length].
+            ValueError: Raised if pitch is not positive or the scan sequence is not supported.
         """
         self._pitch = check_length(pitch, 'pitch')
 

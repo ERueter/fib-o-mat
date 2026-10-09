@@ -16,7 +16,7 @@ from fibomat.linalg import DimVector
 from fibomat.mill import Mill
 from fibomat.raster_styles import ScanSequence, one_d, two_d, zero_d
 from fibomat.shapes import ArcSpline, Circle, Line, Polygon, Rect, RasterizedPoints, Spot
-from fibomat.units import unit
+from fibomat.units import DimensionError, unit
 
 
 def um(x, y):
@@ -67,9 +67,9 @@ class TestConstruction:
     def test_invalid_arguments(self):
         with pytest.raises(ValueError, match='length'):
             BokehBackend(unit=unit('s'))
-        with pytest.raises(TypeError, match='dimensioned'):
+        with pytest.raises(DimensionError, match='rasterize_pitch'):
             BokehBackend(rasterize_pitch=0.01)
-        with pytest.raises(ValueError, match='length'):
+        with pytest.raises(DimensionError, match='rasterize_pitch'):
             BokehBackend(rasterize_pitch=1. * unit('s'))
         with pytest.raises(ValueError, match='positive'):
             BokehBackend(rasterize_pitch=0. * unit('µm'))

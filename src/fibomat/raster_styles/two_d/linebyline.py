@@ -34,6 +34,7 @@ from fibomat.units import (
     LengthDimension,
     LengthUnit,
     TimeUnit,
+    check_units,
     scale_to,
 )
 
@@ -82,6 +83,7 @@ class LineByLine(RasterStyle):
     :func:`~fibomat.curve_tools.fill_with_lines`, a raster style for curves (`line_style`) is applied to each of them.
     """
 
+    @check_units
     def __init__(
         self,
         line_pitch: DimFloat[LengthDimension],
@@ -100,8 +102,8 @@ class LineByLine(RasterStyle):
             line_style (RasterStyle): raster style of the lines (dimension 1), e.g. :class:`one_d.Curve`
 
         Raises:
-            TypeError: Raised if line_pitch is not a dimensioned value.
-            ValueError: Raised if line_pitch is not a positive length, alpha is not in [-pi/2, pi/2], or line_style
+            DimensionError: Raised if line_pitch is not a dimensioned value or has not the dimension [length].
+            ValueError: Raised if line_pitch is not positive, alpha is not in [-pi/2, pi/2], or line_style
                 is not a raster style for curves.
         """
         self._line_pitch = check_length(line_pitch, "line_pitch")
@@ -122,23 +124,6 @@ class LineByLine(RasterStyle):
         return (
             f"{self.__class__.__name__}(line_pitch={self._line_pitch!r}, alpha={self._alpha!r}, "
             f"invert={self._invert!r}, scan_sequence={self._scan_sequence!r}, line_style={self._line_style!r})"
-        )
-
-    @classmethod
-    def make_equal_pitch(
-        cls: t.Type[t.Self],
-        pitch: DimFloat[LengthDimension],
-        *,
-        scan_sequence: t.Union[ScanSequence, str] = ScanSequence.CONSECUTIVE,
-        alpha: float = 0.0,
-        invert: bool = False,
-    ):
-        return cls(
-            line_pitch=pitch,
-            scan_sequence=scan_sequence,
-            alpha=alpha,
-            invert=invert,
-            line_style=Curve(pitch, ScanSequence.CONSECUTIVE),
         )
 
     @property

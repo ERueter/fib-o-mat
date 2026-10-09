@@ -18,6 +18,8 @@ __all__ = [
     'LengthDimension',
     'TimeDimension',
     'DimensionlessDimension',
+    'CurrentDimension',
+    'CurrentDensityDimension',
     'SpotDoseDimension',
     'LineDoseDimension',
     'AreaDoseDimension',
@@ -78,6 +80,16 @@ class TimeDimension(Dimension):
 class DimensionlessDimension(Dimension):
     """Dimensionless quantities."""
     pint_dimension = ''
+
+
+class CurrentDimension(Dimension):
+    """Dimension ``[current]``, e.g. the beam current."""
+    pint_dimension = '[current]'
+
+
+class CurrentDensityDimension(Dimension):
+    """Dimension ``[current] / [length] ** 2``, e.g. the ion flux."""
+    pint_dimension = '[current] / [length] ** 2'
 
 
 class SpotDoseDimension(Dimension):

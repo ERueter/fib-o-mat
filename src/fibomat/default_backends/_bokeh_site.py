@@ -13,7 +13,7 @@ from fibomat.curve_tools import rasterize_with_const_error
 from fibomat.layout.pattern import Pattern
 from fibomat.linalg import DimBoundingBox, DimVector, DimVectorLike, Vector
 from fibomat.mill import Mill
-from fibomat.units import DimFloat, LengthUnit, scale_factor, scale_to
+from fibomat.units import DimFloat, LengthDimension, LengthUnit, check_units, scale_factor, scale_to
 
 
 __all__ = ['BokehSite', 'ShapeType']
@@ -69,12 +69,13 @@ class BokehSite:
     ]
     """Columns of the bokeh data sources."""
 
+    @check_units
     def __init__(
         self,
         site_index: int,
         plot_unit: LengthUnit,
         dim_center: DimVectorLike,
-        rasterize_pitch: DimFloat[t.Any],
+        rasterize_pitch: DimFloat[LengthDimension],
         *,
         cycle_colors: bool = False,
         fov_bounding_box: t.Optional[DimBoundingBox] = None,

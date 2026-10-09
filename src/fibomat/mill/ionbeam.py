@@ -20,13 +20,15 @@ import numpy as np
 import pint  # type: ignore
 
 from fibomat.linalg import VectorLike
-from fibomat.units import DimFloat, LengthDimension, UnitType, scale_factor, ureg, has_length_dim, unit
+from fibomat.units import (
+    CurrentDensityDimension, CurrentDimension, DimFloat, LengthDimension, UnitType, check_units, has_length_dim,
+    scale_factor, ureg, unit
+)
 
 
 __all__ = ['IonBeam', 'GaussBeam']
 
 
-_CURRENT_DIMENSIONALITY = ureg.get_dimensionality('[current]')
 _FLUX_UNIT = ureg.Unit('pA / µm**2')
 """Unit of the flux returned by :class:`GaussBeam`."""
 
@@ -130,7 +132,7 @@ class IonBeam(abc.ABC):
         position: VectorLike,
         beam_maxima: t.Union[t.Sequence[VectorLike], VectorLike],
         position_unit: UnitType
-    ) -> t.Union[t.Tuple[np.ndarray, UnitType], DimFloat[t.Any]]:
+    ) -> t.Union[t.Tuple[np.ndarray, UnitType], DimFloat[CurrentDensityDimension]]:
         """Calculate the ion flux at `position` if the ion beam maximum is at `beam_maxima`.
 
         Args:
@@ -147,7 +149,8 @@ class IonBeam(abc.ABC):
             ValueError: Raised if the positions are invalid.
         """
 
-    def nominal_flux_per_spot(self) -> DimFloat[t.Any]:
+    @check_units
+    def nominal_flux_per_spot(self) -> DimFloat[CurrentDensityDimension]:
         """Calculate the ion flux of a single, isolated spot.
 
         Returns:
@@ -157,7 +160,8 @@ class IonBeam(abc.ABC):
         assert isinstance(flux, DimFloat)
         return flux
 
-    def nominal_flux_per_spot_on_line(self, pitch: DimFloat[LengthDimension]) -> DimFloat[t.Any]:
+    @check_units
+    def nominal_flux_per_spot_on_line(self, pitch: DimFloat[LengthDimension]) -> DimFloat[CurrentDensityDimension]:
         """Calculate the ion flux of a spot on a line of spots with pitch `pitch`.
 
         All spots inside of the cut-off length are considered.
@@ -169,7 +173,8 @@ class IonBeam(abc.ABC):
             DimFloat: flux
 
         Raises:
-            ValueError: Raised if pitch is not a positive length.
+            DimensionError: Raised if pitch is no dimensioned value or has not the dimension [length].
+            ValueError: Raised if pitch is not positive.
         """
         pitch_um = _positive_length(pitch, 'pitch')
 
@@ -184,9 +189,10 @@ class IonBeam(abc.ABC):
 
         return DimFloat(float(np.sum(fluxes)) * flux_unit)
 
+    @check_units
     def nominal_flux_per_spot_in_rect(
         self, pitch_x: DimFloat[LengthDimension], pitch_y: DimFloat[LengthDimension]
-    ) -> DimFloat[t.Any]:
+    ) -> DimFloat[CurrentDensityDimension]:
         """Calculate the ion flux of a spot on a rectangular grid of spots with the pitches `pitch_x` and `pitch_y`.
 
         All spots inside of the cut-off length are considered.
@@ -199,7 +205,8 @@ class IonBeam(abc.ABC):
             DimFloat: flux
 
         Raises:
-            ValueError: Raised if a pitch is not a positive length.
+            DimensionError: Raised if a pitch is no dimensioned value or has not the dimension [length].
+            ValueError: Raised if a pitch is not positive.
         """
         pitch_x_um = _positive_length(pitch_x, 'pitch_x')
         pitch_y_um = _positive_length(pitch_y, 'pitch_y')
@@ -229,7 +236,8 @@ class IonBeam(abc.ABC):
 
 
 def _positive_length(length: DimFloat[LengthDimension], name: str) -> float:
-    """Return a length in µm.
+    """Return a length in µm. That `length` is a length must be checked by the caller (see
+    :func:`~fibomat.units.check_units`).
 
     Args:
         length (DimFloat[LengthDimension]): length
@@ -239,14 +247,8 @@ def _positive_length(length: DimFloat[LengthDimension], name: str) -> float:
         float: magnitude in µm
 
     Raises:
-        TypeError: Raised if length is not a dimensioned value.
-        ValueError: Raised if length is not a positive and finite length.
+        ValueError: Raised if length is not positive and finite.
     """
-    if not isinstance(length, DimFloat):
-        raise TypeError(f'{name} must be a dimensioned value like 2. * unit("nm"), got {type(length).__name__}.')
-    if not has_length_dim(length):
-        raise ValueError(f'{name} must have dimension [length].')
-
     value = length.m_as('µm')
     if not math.isfinite(value) or value <= 0.:
         raise ValueError(f'{name} must be positive and finite, got {length!r}.')
@@ -256,7 +258,8 @@ def _positive_length(length: DimFloat[LengthDimension], name: str) -> float:
 class GaussBeam(IonBeam):
     """Gauss function model of an ion beam."""
 
-    def __init__(self, fwhm: DimFloat[LengthDimension], current: DimFloat[t.Any], beam_cutoff: int = 10):
+    @check_units
+    def __init__(self, fwhm: DimFloat[LengthDimension], current: DimFloat[CurrentDimension], beam_cutoff: int = 10):
         """
         Args:
             fwhm (DimFloat[LengthDimension]): full width at half maximum of the beam profile.
@@ -264,18 +267,14 @@ class GaussBeam(IonBeam):
             beam_cutoff (int, optional): beam cut-off, defaults to 10.
 
         Raises:
-            TypeError: Raised if fwhm or current is not a dimensioned value or beam_cutoff is not an integer.
-            ValueError: Raised if fwhm is not a positive length, current is not a positive current or
-                beam_cutoff < 1.
+            DimensionError: Raised if fwhm or current is not a dimensioned value or has a wrong dimension.
+            TypeError: Raised if beam_cutoff is not an integer.
+            ValueError: Raised if fwhm or current is not positive or beam_cutoff < 1.
         """
         super().__init__(beam_cutoff)
 
         fwhm_um = _positive_length(fwhm, 'fwhm')
 
-        if not isinstance(current, DimFloat):
-            raise TypeError(f'current must be a dimensioned value like 1. * unit("pA"), got {type(current).__name__}.')
-        if current.quantity.dimensionality != _CURRENT_DIMENSIONALITY:
-            raise ValueError('current must have dimension [current].')
         if not math.isfinite(current.magnitude) or current.magnitude <= 0.:
             raise ValueError(f'current must be positive and finite, got {current!r}.')
 
@@ -300,7 +299,7 @@ class GaussBeam(IonBeam):
         return self._fwhm
 
     @property
-    def current(self) -> DimFloat[t.Any]:
+    def current(self) -> DimFloat[CurrentDimension]:
         """Total beam current.
 
         Access:
@@ -317,7 +316,7 @@ class GaussBeam(IonBeam):
         position: VectorLike,
         beam_maxima: t.Union[t.Sequence[VectorLike], VectorLike],
         position_unit: UnitType
-    ) -> t.Union[t.Tuple[np.ndarray, pint.Unit], DimFloat[t.Any]]:
+    ) -> t.Union[t.Tuple[np.ndarray, pint.Unit], DimFloat[CurrentDensityDimension]]:
         """Calculate the ion flux at `position` if the ion beam maximum is at `beam_maxima`.
 
         The flux of a beam with the current `I` and the standard deviation `sigma` is

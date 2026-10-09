@@ -8,7 +8,8 @@ import pytest
 from fibomat.units import (
     ureg, Q_, U_, unit, UnitType, QuantityType, scale_factor, scale_to, has_length_dim, has_time_dim,
     Dimension, DimBase, DimFloat, DimensionError, LengthDimension, TimeDimension, DimensionlessDimension,
-    SpotDoseDimension, LineDoseDimension, AreaDoseDimension, UNIT_DIMENSIONS, check_units
+    SpotDoseDimension, LineDoseDimension, AreaDoseDimension, UNIT_DIMENSIONS, check_units, CurrentDimension,
+    CurrentDensityDimension
 )
 
 
@@ -112,6 +113,17 @@ class TestDimFloat:
         assert a.quantity == 2 * ureg.m
 
 
+def test_current_dimensions():
+    assert UNIT_DIMENSIONS['pA'] is CurrentDimension
+    current = 2. * unit('nA')
+    assert CurrentDimension.matches(current.quantity)
+    assert not LengthDimension.matches(current.quantity)
+
+    flux = (current / (1. * unit('µm')) / (1. * unit('µm')))
+    assert CurrentDensityDimension.matches(flux.quantity)
+    assert CurrentDensityDimension.matches((1. * unit('pA / µm**2')).quantity)
+
+
 class _Holder:
     @classmethod
     @check_units
@@ -137,6 +149,31 @@ class TestCheckUnits:
         assert isinstance(_Holder.create(1. * unit('m')), _Holder)
         with pytest.raises(DimensionError):
             _Holder.create(1. * unit('s'))
+
+    def test_optional_union_and_tuple(self):
+        @check_units
+        def func(
+            a: t.Optional[DimFloat[LengthDimension]] = None,
+            b: t.Union[DimFloat[LengthDimension], DimFloat[TimeDimension]] = 1. * unit('m'),
+            c: t.Tuple[DimFloat[LengthDimension], DimFloat[TimeDimension]] = (1. * unit('m'), 1. * unit('s')),
+            d: t.Tuple[DimFloat[LengthDimension], ...] = (),
+            e: t.Union[DimFloat[LengthDimension], str] = 'unchecked',
+        ) -> None:
+            return None
+
+        func()
+        func(a=1. * unit('m'), b=1. * unit('s'), d=(1. * unit('m'), 2. * unit('nm')), e='anything')
+
+        with pytest.raises(DimensionError):
+            func(a=1. * unit('s'))
+        with pytest.raises(DimensionError):
+            func(b=1. * unit('nA', CurrentDimension))
+        with pytest.raises(DimensionError):
+            func(c=(1. * unit('s'), 1. * unit('s')))
+        with pytest.raises(DimensionError):
+            func(c=(1. * unit('m'),))
+        with pytest.raises(DimensionError):
+            func(d=(1. * unit('m'), 1. * unit('s')))
 
     def test_return_checked(self):
         @check_units

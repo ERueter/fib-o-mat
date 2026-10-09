@@ -22,7 +22,7 @@ from fibomat.raster_styles._helpers import check_length
 from fibomat.raster_styles.rasterstyle import RasterStyle
 from fibomat.raster_styles.scansequence import ScanSequence
 from fibomat.raster_styles.two_d import LineByLine
-from fibomat.units import DimFloat, LengthDimension
+from fibomat.units import DimFloat, LengthDimension, check_units
 
 
 __all__ = ['OutlineAlignement', 'OutlineScanStyle', 'OutlineNodeStyle', 'LineByLineOutlined']
@@ -65,6 +65,7 @@ def _check_enum(value: t.Any, enum_class: t.Type[enum.Enum], name: str) -> t.Any
 class LineByLineOutlined(LineByLine):
     """Fill an area line by line and expose its outline (see the module docstring)."""
 
+    @check_units
     def __init__(
         self,
         line_pitch: DimFloat[LengthDimension],
@@ -90,8 +91,9 @@ class LineByLineOutlined(LineByLine):
             outline_node_style (OutlineNodeStyle): style of the corners of the outline
 
         Raises:
-            TypeError: Raised if a pitch or the offset is no dimensioned value or an outline style is no enum member.
-            ValueError: Raised if a pitch or the offset is no positive length or the arguments of
+            DimensionError: Raised if a pitch or the offset is no dimensioned value or has not the dimension [length].
+            TypeError: Raised if an outline style is no enum member.
+            ValueError: Raised if a pitch or the offset is not positive or the arguments of
                 :class:`~fibomat.raster_styles.two_d.LineByLine` are invalid.
         """
         super().__init__(line_pitch, scan_sequence, alpha, invert, line_style)

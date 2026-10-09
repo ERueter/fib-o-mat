@@ -21,7 +21,7 @@ from fibomat.default_backends._unit_helpers import to_length_unit, to_time_unit
 from fibomat.layout.pattern import Pattern
 from fibomat.layout.site import Site
 from fibomat.linalg import BoundingBox, Vector
-from fibomat.units import DimFloat, LengthUnit, TimeUnit, has_time_dim, scale_to
+from fibomat.units import DimFloat, LengthUnit, TimeDimension, TimeUnit, check_units, scale_to
 from fibomat.utils import PathLike
 
 
@@ -94,10 +94,11 @@ class SpotListBackend(BackendBase):
     the source file of the backend.
     """
 
+    @check_units
     def __init__(
         self,
         save_impl: t.Optional[t.Callable[[PathLike, np.ndarray, t.Dict[str, t.Any]], None]] = None,
-        base_dwell_time: t.Optional[DimFloat[t.Any]] = None,
+        base_dwell_time: t.Optional[DimFloat[TimeDimension]] = None,
         length_unit: t.Optional[LengthUnit] = None,
         time_unit: t.Optional[TimeUnit] = None,
         description: t.Optional[str] = None,
@@ -112,8 +113,9 @@ class SpotListBackend(BackendBase):
             description (str, optional): description
 
         Raises:
-            TypeError: Raised if `base_dwell_time` is no dimensioned value or `save_impl` is not callable.
-            ValueError: Raised if a unit has the wrong dimension or `base_dwell_time` is not a positive time.
+            DimensionError: Raised if `base_dwell_time` is no dimensioned value or has not the dimension [time].
+            TypeError: Raised if `save_impl` is not callable.
+            ValueError: Raised if a unit has the wrong dimension or `base_dwell_time` is not positive.
         """
         super().__init__(description)
 
@@ -124,11 +126,8 @@ class SpotListBackend(BackendBase):
         self._length_unit = to_length_unit(length_unit if length_unit is not None else 'µm')
         self._time_unit = to_time_unit(time_unit if time_unit is not None else 'µs')
 
-        if base_dwell_time is not None:
-            if not isinstance(base_dwell_time, DimFloat):
-                raise TypeError('base_dwell_time must be a dimensioned value like 0.1 * unit("µs").')
-            if not has_time_dim(base_dwell_time) or not base_dwell_time.magnitude > 0.:
-                raise ValueError('base_dwell_time must be a positive time.')
+        if base_dwell_time is not None and not base_dwell_time.magnitude > 0.:
+            raise ValueError('base_dwell_time must be positive.')
         self._base_dwell_time = base_dwell_time
 
         self._site_count = 0

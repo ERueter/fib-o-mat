@@ -12,7 +12,7 @@ from fibomat.linalg import DimVector
 from fibomat.mill import Mill
 from fibomat.raster_styles import ScanSequence, one_d, two_d, zero_d
 from fibomat.shapes import Circle, Line, Rect, Spot
-from fibomat.units import unit
+from fibomat.units import DimensionError, unit
 
 
 def um(x, y):
@@ -50,11 +50,11 @@ class TestConstruction:
             SpotListBackend(time_unit=unit('µm'))
         with pytest.raises(TypeError):
             SpotListBackend(length_unit=3)
-        with pytest.raises(TypeError, match='dimensioned'):
+        with pytest.raises(DimensionError, match='base_dwell_time'):
             SpotListBackend(base_dwell_time=0.1)
-        with pytest.raises(ValueError, match='positive time'):
+        with pytest.raises(ValueError, match='positive'):
             SpotListBackend(base_dwell_time=0. * unit('µs'))
-        with pytest.raises(ValueError):
+        with pytest.raises(DimensionError):
             SpotListBackend(base_dwell_time=1. * unit('µm'))
         with pytest.raises(TypeError, match='callable'):
             SpotListBackend(save_impl='foo')

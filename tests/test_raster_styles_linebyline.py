@@ -11,7 +11,7 @@ from fibomat.raster_styles import RasterStyle, ScanSequence
 from fibomat.raster_styles.one_d import Curve
 from fibomat.raster_styles.two_d import LineByLine
 from fibomat.shapes import ArcSpline, Circle, Line, Rect, Spot
-from fibomat.units import unit
+from fibomat.units import DimensionError, unit
 
 
 def line_style(pitch=0.5):
@@ -39,11 +39,11 @@ class TestConstruction:
         assert 'LineByLine(' in repr(line_by_line)
 
     def test_invalid_line_pitch(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(DimensionError):
             LineByLine(0.5, ScanSequence.CONSECUTIVE, 0., False, line_style())
         with pytest.raises(ValueError):
             LineByLine(0. * unit('µm'), ScanSequence.CONSECUTIVE, 0., False, line_style())
-        with pytest.raises(ValueError, match='length'):
+        with pytest.raises(DimensionError, match='line_pitch'):
             LineByLine(1. * unit('s'), ScanSequence.CONSECUTIVE, 0., False, line_style())
 
     @pytest.mark.parametrize('alpha', [-2., 2., math.nan])

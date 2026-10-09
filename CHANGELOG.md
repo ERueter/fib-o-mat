@@ -6,6 +6,10 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 - **Breaking:** the lengths of `DimLattice.from_counts`, `DimLattice.from_rect` and `DimLatticeBuilder.rectangular` are annotated as `DimFloat[LengthDimension]` and checked with `check_units`: a value without a unit or with another dimension raises a `DimensionError` (a `TypeError`; before: `TypeError` for plain numbers and `ValueError` for other dimensions). Negative or zero lengths still raise `ValueError`.
+- The dimensions of all other lengths, times, currents and doses of the public API are annotated with `DimFloat[...]` and checked with `check_units` (raster style pitches, `GaussBeam`, `PatterningDurationCalculator`, `SpotListBackend`, `BokehBackend`, the step and repeat backend, `Mill`, `NPVEMill`, `LineByLineOutlined`). **Breaking:** a value without a unit or with a wrong dimension raises a `DimensionError` (a `TypeError`) instead of `ValueError` (wrong dimension) or `TypeError` (no unit); values which are not positive still raise `ValueError`.
+- New dimensions `CurrentDimension` and `CurrentDensityDimension` and the current units (`A`, `mA`, `µA`, `nA`, `pA`, `fA`) in `unit()`; the ion flux of `GaussBeam` is a `DimFloat[CurrentDensityDimension]`.
+- New user guide page "Units" (`docs/user_guide/units.rst`) which explains unit tags, dimensions, calculations, conversions and `check_units`.
+- `check_units` also checks `Optional[...]`, `Union[...]` and `Tuple[...]` of dimensioned annotations.
 - `check_units` resolves the annotations on the first call, so methods can be annotated with the class they belong to.
 
 ### Fixed

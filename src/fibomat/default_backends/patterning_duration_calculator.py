@@ -21,13 +21,10 @@ from fibomat.backend import BackendBase
 from fibomat.layout.pattern import Pattern
 from fibomat.layout.site import Site
 from fibomat.raster_styles import one_d, two_d, zero_d
-from fibomat.units import DimFloat, ureg
+from fibomat.units import CurrentDimension, DimFloat, TimeDimension, check_units, ureg
 
 
 __all__ = ['PatterningDurationCalculator']
-
-
-_CURRENT_DIMENSIONALITY = ureg.get_dimensionality('[current]')
 
 
 def _format_time(duration: pint.Quantity) -> str:
@@ -52,22 +49,21 @@ class PatterningDurationCalculator(BackendBase):
     The duration is ``number of dwell points * repeats * dwell time``.
     """
 
-    def __init__(self, current: DimFloat[t.Any], description: t.Optional[str] = None):
+    @check_units
+    def __init__(self, current: DimFloat[CurrentDimension], description: t.Optional[str] = None):
         """
         Args:
             current (DimFloat): beam current, e.g. ``1. * unit('nA')``. It is only shown in the summary.
             description (str, optional): description
 
         Raises:
-            TypeError: Raised if current is not a dimensioned value.
-            ValueError: Raised if current is not a positive current.
+            DimensionError: Raised if current is not a dimensioned value or has not the dimension [current].
+            ValueError: Raised if current is not positive.
         """
         super().__init__(description)
 
-        if not isinstance(current, DimFloat):
-            raise TypeError('current must be a dimensioned value like 1. * unit("nA").')
-        if current.quantity.dimensionality != _CURRENT_DIMENSIONALITY or not current.magnitude > 0.:
-            raise ValueError('current must be a positive current.')
+        if not current.magnitude > 0.:
+            raise ValueError('current must be positive.')
         self._current = current
 
         self.durations: t.List[t.Dict[str, t.Any]] = []
@@ -77,7 +73,7 @@ class PatterningDurationCalculator(BackendBase):
         self._i_pattern = 0
 
     @property
-    def current(self) -> DimFloat[t.Any]:
+    def current(self) -> DimFloat[CurrentDimension]:
         """Beam current.
 
         Access:
@@ -86,7 +82,8 @@ class PatterningDurationCalculator(BackendBase):
         return self._current
 
     @property
-    def total_duration(self) -> DimFloat[t.Any]:
+    @check_units
+    def total_duration(self) -> DimFloat[TimeDimension]:
         """Estimated duration of the whole layout.
 
         Access:

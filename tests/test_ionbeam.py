@@ -6,7 +6,7 @@ import pytest
 
 from fibomat.linalg import Vector
 from fibomat.mill import GaussBeam, IonBeam
-from fibomat.units import DimFloat, unit, ureg
+from fibomat.units import DimensionError, DimFloat, unit, ureg
 
 
 def beam(fwhm=10., current=1., cutoff=10):
@@ -111,15 +111,15 @@ class TestGaussBeam:
         assert dense == pytest.approx(1. / 4e-6, rel=1e-3)
 
     def test_invalid_fwhm_and_current(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(DimensionError):
             GaussBeam(10., 1. * unit('pA'))
-        with pytest.raises(ValueError, match='length'):
+        with pytest.raises(DimensionError, match='fwhm'):
             GaussBeam(10. * unit('s'), 1. * unit('pA'))
         with pytest.raises(ValueError):
             GaussBeam(0. * unit('nm'), 1. * unit('pA'))
-        with pytest.raises(TypeError):
+        with pytest.raises(DimensionError):
             GaussBeam(10. * unit('nm'), 1.)
-        with pytest.raises(ValueError, match='current'):
+        with pytest.raises(DimensionError, match='current'):
             GaussBeam(10. * unit('nm'), 1. * unit('s'))
         with pytest.raises(ValueError):
             GaussBeam(10. * unit('nm'), -1. * unit('pA'))

@@ -8,7 +8,7 @@ from fibomat.mill import Mill
 from fibomat.raster_styles import RasterStyle, ScanSequence
 from fibomat.raster_styles.one_d import Curve
 from fibomat.shapes import ArcSpline, Circle, Line, Spot
-from fibomat.units import unit
+from fibomat.units import DimensionError, unit
 
 
 def rasterize(style, shape, repeats=1, dwell=1., length=unit('µm'), time=unit('ms')):
@@ -37,11 +37,11 @@ class TestConstruction:
             Curve(pitch * unit('µm'), ScanSequence.CONSECUTIVE)
 
     def test_pitch_dimension(self):
-        with pytest.raises(ValueError, match='length'):
+        with pytest.raises(DimensionError, match='pitch'):
             Curve(1. * unit('s'), ScanSequence.CONSECUTIVE)
 
     def test_pitch_type(self):
-        with pytest.raises(TypeError):
+        with pytest.raises(DimensionError):
             Curve(1., ScanSequence.CONSECUTIVE)
 
     @pytest.mark.parametrize('sequence', [ScanSequence.SERPENTINE, ScanSequence.CROSSECTION, 'foo'])

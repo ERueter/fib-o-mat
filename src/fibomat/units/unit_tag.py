@@ -5,7 +5,7 @@ import numbers
 import typing as t
 
 from fibomat.units.dim_float import DimFloat
-from fibomat.units.dimensions import D, Dimension, LengthDimension, TimeDimension
+from fibomat.units.dimensions import CurrentDimension, D, Dimension, LengthDimension, TimeDimension
 from fibomat.units.unit_table import UNIT_DIMENSIONS
 
 
@@ -46,6 +46,8 @@ class _UnitTag(t.Generic[D]):
 def unit(symbol: t.Literal['cm', 'ft', 'in', 'km', 'm', 'mi', 'mm', 'nm', 'um', 'yd', 'µm'], dimension: None = None) -> _UnitTag[LengthDimension]: ...
 @t.overload
 def unit(symbol: t.Literal['day', 'h', 'min', 'ms', 'ns', 's', 'us', 'µs'], dimension: None = None) -> _UnitTag[TimeDimension]: ...
+@t.overload
+def unit(symbol: t.Literal['A', 'fA', 'mA', 'nA', 'pA', 'uA', 'µA'], dimension: None = None) -> _UnitTag[CurrentDimension]: ...
 # <<< END GENERATED unit() OVERLOADS <<<
 
 

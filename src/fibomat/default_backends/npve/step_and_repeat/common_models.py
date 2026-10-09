@@ -16,7 +16,7 @@ from fibomat.default_backends.npve.step_and_repeat.npve_mill import NPVEMill
 from fibomat.default_backends.npve.step_and_repeat.outline import LineByLineOutlined
 from fibomat.linalg import VectorLike
 from fibomat.raster_styles import RasterStyle, ScanSequence, one_d, two_d, zero_d
-from fibomat.units import DimFloat, scale_to, unit
+from fibomat.units import DimFloat, LengthDimension, check_units, scale_to, unit
 
 
 __all__ = ['FIBShape', 'ShapeTexture', 'encode_image']
@@ -139,7 +139,13 @@ def encode_image(data: bytes) -> str:
 class ShapeTexture:
     """A bitmap which is used as texture of a rectangle."""
 
-    def __init__(self, bitmap: t.Any, rect_size: t.Tuple[DimFloat[t.Any], DimFloat[t.Any]], raster_style: RasterStyle):
+    @check_units
+    def __init__(
+        self,
+        bitmap: t.Any,
+        rect_size: t.Tuple[DimFloat[LengthDimension], DimFloat[LengthDimension]],
+        raster_style: RasterStyle
+    ):
         """
         Args:
             bitmap (PIL.Image.Image): image
@@ -147,6 +153,7 @@ class ShapeTexture:
             raster_style (RasterStyle): raster style of the rectangle (LineByLine with a Curve as line style)
 
         Raises:
+            DimensionError: Raised if `rect_size` does not consist of two lengths.
             ValueError: Raised if the raster style is no LineByLine or has an unsupported line style.
             TypeError: Raised if the line style is no Curve.
         """

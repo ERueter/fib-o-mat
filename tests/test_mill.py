@@ -6,7 +6,7 @@ import numpy as np
 import pytest
 
 from fibomat.mill import DDDMill, Mill, MillBase, SILMill, SpecialMill
-from fibomat.units import unit
+from fibomat.units import DimensionError, unit
 
 
 class TestMillBase:
@@ -67,7 +67,7 @@ class TestMill:
 
     @pytest.mark.parametrize('dwell_time', ['foo', 1., 1])
     def test_dwell_time_type(self, dwell_time):
-        with pytest.raises(TypeError, match='unit'):
+        with pytest.raises(DimensionError, match='dwell_time'):
             Mill(dwell_time, 2)
 
     def test_plain_pint_quantity_is_rejected(self):
@@ -76,7 +76,7 @@ class TestMill:
             Mill(1. * ureg.second, 2)
 
     def test_dwell_time_dimension(self):
-        with pytest.raises(ValueError, match='time'):
+        with pytest.raises(DimensionError, match='dwell_time'):
             Mill(1. * unit('µm'), 2)
 
     @pytest.mark.parametrize('value', [0., -1., float('inf'), float('nan')])
