@@ -264,7 +264,7 @@ def sim_yield_eb2ev(theta_rad):
 
 @lru_cache(maxsize=1)
 def _load_katja_sputter_yield_data():
-    data_path = Path(__file__).with_name("katjas-claude-sputteryield-shifted-fit.csv")
+    data_path = Path(__file__).with_name("katja-simulation-fit-rille-sputteryield.csv")
     data = np.loadtxt(data_path, delimiter=",", skiprows=1)
     return data[:, 0], data[:, 1]
 
@@ -277,6 +277,23 @@ def katja_sputter_yield(theta_rad):
     """
     angle_deg = np.rad2deg(np.asarray(theta_rad))
     angles, yields = _load_katja_sputter_yield_data()
+    return np.interp(angle_deg, angles, yields, left=yields[0], right=0.0)
+
+@lru_cache(maxsize=1)
+def _load_large_angle_sputter_yield_data():
+    data_path = Path(__file__).with_name("polynomial_sputter_yield_fit.csv")
+    data = np.loadtxt(data_path, delimiter=",", skiprows=1)
+    return data[:, 0], data[:, 1]
+
+
+def large_angle_sputter_yield(theta_rad):
+    """Interpolate Katja's fitted sputter yield for angles in radians.
+
+    The CSV is loaded only once. Values above its 89-degree range are zero,
+    matching the extrapolation policy of :func:`sim_yield_eb2ev`.
+    """
+    angle_deg = np.rad2deg(np.asarray(theta_rad))
+    angles, yields = _load_large_angle_sputter_yield_data()
     return np.interp(angle_deg, angles, yields, left=yields[0], right=0.0)
 
 @lru_cache(maxsize=1)
@@ -534,7 +551,7 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
 
         D_scaled = D_vec / scale
 
-        S_theta = update_S_from_Z(Z_current, config, sputter_yield_func=katja_sputter_yield, verbose=False)
+        S_theta = update_S_from_Z(Z_current, config, sputter_yield_func=large_angle_sputter_yield, verbose=False)
         depth_scale = config.material_scale
 
         # Matrices for current surface profile
@@ -685,6 +702,7 @@ def simulate_milling_from_dwell_times(
     verbose=False,
     plot_every=10,
     record_surface_history=False,
+    surface_oversampling=1,
 ):
     """
     Simulate the milling process from a sequence of dwell-time maps.
@@ -704,6 +722,8 @@ def simulate_milling_from_dwell_times(
             cross-section for each yield model.
         plot_every: Plot every nth slice when verbose is enabled.
         record_surface_history: If True, also return the history of surfaces.
+        surface_oversampling: Integer refinement factor for the simulated
+            surface grid. Dwell positions remain at the original pixel centers.
 
     Returns:
         If only one yield function is used, returns the final surface depth matrix.
@@ -712,6 +732,8 @@ def simulate_milling_from_dwell_times(
     """
     if dwell_maps is None:
         raise ValueError("dwell_maps must not be None.")
+    if isinstance(surface_oversampling, bool) or not isinstance(surface_oversampling, (int, np.integer)) or surface_oversampling < 1:
+        raise ValueError("surface_oversampling must be a positive integer.")
 
     if isinstance(sputter_yield_func, (list, tuple)) and len(sputter_yield_func) == 2:
         sputter_yield_func_2 = sputter_yield_func[1]
@@ -747,9 +769,77 @@ def simulate_milling_from_dwell_times(
     else:
         dwell_maps = [np.asarray(dwell_maps).reshape((config.n, config.n))]
 
+    from copy import copy
+    from scipy.ndimage import map_coordinates
+
     n = config.n
-    Z_currents = [np.zeros_like(Z_target, dtype=float) for _ in yield_funcs]
+    if np.shape(Z_target) != (n, n):
+        raise ValueError(f"Z_target must have shape ({n}, {n}), got {np.shape(Z_target)}.")
+
+    surface_oversampling = int(surface_oversampling)
+    surface_n = (n - 1) * surface_oversampling + 1
+    surface_dx = config.dx / surface_oversampling
+    surface_dy = config.dy / surface_oversampling
+    surface_config = copy(config)
+    surface_config.dx = surface_dx
+    surface_config.dy = surface_dy
+
+    coarse_kernel = np.asarray(config.K, dtype=float)
+    if surface_oversampling == 1:
+        surface_kernel = coarse_kernel
+    else:
+        kernel_y, kernel_x = np.indices(coarse_kernel.shape, dtype=float)
+        kernel_x -= coarse_kernel.shape[1] // 2
+        kernel_y -= coarse_kernel.shape[0] // 2
+        coarse_x = kernel_x * config.dx
+        coarse_y = kernel_y * config.dy
+        gaussian_kernel = np.exp(
+            -(coarse_x**2 + coarse_y**2) / (2 * config.sigma**2)
+        ) * ((coarse_x**2 + coarse_y**2) <= (config.R * config.sigma) ** 2)
+
+        if np.allclose(coarse_kernel, gaussian_kernel, rtol=1e-12, atol=1e-14):
+            kernel_x = np.arange(
+                -(coarse_kernel.shape[1] // 2) * surface_oversampling,
+                (coarse_kernel.shape[1] // 2) * surface_oversampling + 1,
+            ) * surface_dx
+            kernel_y = np.arange(
+                -(coarse_kernel.shape[0] // 2) * surface_oversampling,
+                (coarse_kernel.shape[0] // 2) * surface_oversampling + 1,
+            ) * surface_dy
+            kernel_X, kernel_Y = np.meshgrid(kernel_x, kernel_y, indexing="xy")
+            surface_kernel = np.exp(
+                -(kernel_X**2 + kernel_Y**2) / (2 * config.sigma**2)
+            )
+            surface_kernel *= (kernel_X**2 + kernel_Y**2) <= (config.R * config.sigma) ** 2
+        else:
+            fine_y, fine_x = np.indices(
+                (
+                    (coarse_kernel.shape[0] - 1) * surface_oversampling + 1,
+                    (coarse_kernel.shape[1] - 1) * surface_oversampling + 1,
+                ),
+                dtype=float,
+            )
+            surface_kernel = map_coordinates(
+                coarse_kernel,
+                [fine_y / surface_oversampling, fine_x / surface_oversampling],
+                order=1,
+                mode="constant",
+                cval=0.0,
+                prefilter=False,
+            )
+
+    Z_currents = [np.zeros((surface_n, surface_n), dtype=float) for _ in yield_funcs]
     surface_history = [[] for _ in yield_funcs]
+
+    if verbose:
+        target_y, target_x = np.indices((surface_n, surface_n), dtype=float)
+        Z_target_surface = map_coordinates(
+            np.asarray(Z_target, dtype=float),
+            [target_y / surface_oversampling, target_x / surface_oversampling],
+            order=1,
+            mode="nearest",
+            prefilter=False,
+        )
 
     for s, t_map in enumerate(dwell_maps):
         t_map = np.asarray(t_map, dtype=float)
@@ -761,22 +851,26 @@ def simulate_milling_from_dwell_times(
         for idx, func in enumerate(yield_funcs):
             S_theta = update_S_from_Z(
                 Z_currents[idx],
-                config,
+                surface_config,
                 sputter_yield_func=func,
                 verbose=False,
             )
 
             depth_scale = config.material_scale
-            Z_delta = depth_scale * fftconvolve(t_map, config.K, mode='same') * S_theta
+            surface_dwell = np.zeros((surface_n, surface_n), dtype=float)
+            surface_dwell[::surface_oversampling, ::surface_oversampling] = t_map
+            Z_delta = depth_scale * fftconvolve(
+                surface_dwell, surface_kernel, mode='same'
+            ) * S_theta
             Z_currents[idx] = Z_currents[idx] + Z_delta
 
             if record_surface_history:
                 surface_history[idx].append(Z_currents[idx].copy())
 
         if verbose and (s % plot_every == 0 or s == len(dwell_maps) - 1):
-            center_idx = n // 2
-            x_axis = (np.arange(n) - n // 2) * config.dx * 1e6  # µm
-            target_cut = Z_target[center_idx, :] * 1e6  # µm
+            center_idx = surface_n // 2
+            x_axis = (np.arange(surface_n) - (n // 2) * surface_oversampling) * surface_dx * 1e6  # µm
+            target_cut = Z_target_surface[center_idx, :] * 1e6  # µm
 
             plt.figure(figsize=(8, 5))
             ax1 = plt.gca()
