@@ -9,7 +9,7 @@ import vasile_with_fft_structured as vas
 
 
 # Define physical parameters for this run in a ProcessConfig-object. Here, default parameters are used.
-config = vas.ProcessConfig()
+config = vas.ProcessConfig(n=1600, dx=0.00625e-6, dy=0.00625e-6)
 
 ############################################################################
 # Define target: SIL
