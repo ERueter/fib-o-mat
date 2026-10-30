@@ -11,9 +11,9 @@ from scipy.signal import fftconvolve
 import matplotlib.pyplot as plt
 
 s = Sample()
-spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
+spiral_style = raster_styles.two_d.Spiral(pitch=100 * U_('nm'),spiral_pitch=100 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
-data = np.load("/home/emma/Documents/FBI/fibomat-v.0.6/smoothed-with-circle.npz")
+data = np.load(r"C:\Users\erue\Documents\fibomat\smoothed-sil-flatten_from-0-8.npz")
 dwell_maps = data["dwell_maps"]
 
 
@@ -56,7 +56,7 @@ for i in range(0,len(dwell_maps)):
         dwell_map_scaled = dwell_map_scaled.reshape((n, n))
         n_rep = 0  # skip if zero
     
-    fov_um = 20.0
+    fov_um = 30#20.0
     dx = fov_um / n
     origin = (-(n - 1) * dx / 2, -(n - 1) * dx / 2)  # center the matrix in the 20 µm FOV
     dwell_map_scaled *= 1e6  # convert to µs for MatrixMill TODO check this
@@ -82,10 +82,10 @@ for i in range(0,len(dwell_maps)):
 
     # Create a new site for each layer
     layer_site = s.create_site(
-        dim_position=(0, 0) * U_('µm'), dim_fov=(20, 20) * U_('µm')
+        dim_position=(0, 0) * U_('µm'), dim_fov=(30, 30) * U_('µm')
     )
 
-    circ = shapes.Circle(r=10000, center=(0,0))  # warum auch immer es crasht, wenn derselbe Kreis mehrfach benutzt wird???
+    circ = shapes.Circle(r=13583, center=(0,0))  # warum auch immer es crasht, wenn derselbe Kreis mehrfach benutzt wird???
     
     layer_site.create_pattern(
         dim_shape=circ * U_('nm'),
@@ -97,7 +97,7 @@ for i in range(0,len(dwell_maps)):
     #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     # plot von erster map sieht normal aus, das zweite ist nur ein Punkt!!!
     exported = s.export(FEIStreamFile, n_rep=n_rep, margin=0.76) 
-    exported.save(f'katjas-sim-fitted-rounded-with-circle-{i}.str')
+    exported.save(f'smoothed-sil-flatten_from-0-9-gauß-tangent-{i}.str')
     #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     print(f"Layer {i}: max dwell {max_d:.2f} µs, scale {scale:.4f}, n_rep {n_rep}")
     s.empty_sites()
