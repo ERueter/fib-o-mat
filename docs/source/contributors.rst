@@ -1,2 +1,2 @@
 .. _authors:
-.. include:: ../CONTRIBUTORS.rst
+.. include:: ../../CONTRIBUTORS.rst
