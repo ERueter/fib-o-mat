@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.8.1] - 2026-11-03
 
 ### Changed
 - GitHub workflows: `release.yml` replaces `build_wheels.yml` and `build_wheel_and_pypi_upload.yml`. It builds wheels for Linux and Windows (x86_64 and arm64) and macOS (x86_64, cross compiled on Apple silicon, and arm64) on current runners, tests every wheel (Python 3.8 and 3.14) and uploads to PyPI with trusted publishing, only for published releases and only if all builds and tests pass. The retired runners `macos-13` and `macos-14` and the actions on Node 20 are replaced.
