@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.8.0] - 2026-11-03
 
 ### Added
 - `SVGBackend` (`fibomat.default_backends`) is reworked for the current API and draws all shapes of the library: one Inkscape layer per site, filled areas, curves as lines, spots as dots, exact svg arcs (arc splines), shapes with holes (`Ring`, `HollowArcSpline`) and arrangements/texts split into their shapes. New options: `show_fov` (dashed fields of view of the sites), `color_by` (`ColorBy`: `'dwell_time'`, `'repeats'` or `'dose'`, read from the mill of each pattern) with a matplotlib `colormap` and an optional `color_bar`; values with different dimensions (e.g. spot and area doses) get separate color scales. Shapes without the setting are drawn in `missing_color`. The svg file is written with the standard library (no svgwrite), `to_string()` returns it, `color_scales` the value ranges. **Breaking:** the old options `pixel_scale` (now `pixel_size`), `stroke_width` (now a length) and `spot_radius` take `DimFloat` lengths; all arguments are keyword-only.

@@ -7,6 +7,6 @@ from fibomat.units import DimFloat, unit
 
 # import fibomat.default_backends
 
-__version__ = "0.7.1"
+__version__ = "0.8.0"
 
 __all__ = ["__version__", "DimFloat", "unit"]
