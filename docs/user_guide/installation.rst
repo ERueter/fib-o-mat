@@ -27,7 +27,7 @@ Some features need additional packages. They can be installed with the extras of
     * - Extra
       - Content
     * - ``exporting``
-      - plotting and exporting backends (bokeh, pillow, xmltodict, marshmallow, ...)
+      - plotting and exporting backends (bokeh, pillow, xmltodict, marshmallow, ...). Below Python 3.10, an older version of bokeh is installed and plots do not contain the measure tool.
     * - ``io``
       - import of vector graphics (SVG and DXF files)
     * - ``gui``

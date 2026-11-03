@@ -77,6 +77,16 @@ The file ``lines.txt`` then contains
 Patterns with other shapes (e.g. circles) raise a :class:`~fibomat.backend.ShapeNotSupportedError`:
 ``SimpleLineBackend does not support the shape type Circle.``
 
+Validating patterns
+-------------------
+
+A backend can optionally overwrite :meth:`~fibomat.backend.BackendBase.validate_pattern`. It is called for each shape before the shape method and should raise an error if the shape, the mill and the raster style of the pattern do not fit together. By default, all patterns are accepted. ::
+
+    class SimpleLineBackend(BackendBase):
+        def validate_pattern(self, ptn: Pattern) -> None:
+            if ptn.raster_style.dimension != 1:
+                raise ValueError('SimpleLineBackend only supports raster styles for curves.')
+
 Custom shapes
 -------------
 

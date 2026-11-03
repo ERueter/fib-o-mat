@@ -127,7 +127,7 @@ The resulting plot is shown below. The big box shows the field of view of the pa
 Select one of the zoom tools in the right panel to zoom in and out, either by scrolling or with a box selection.
 Hovering over a shape opens a tooltip which displays some information about the geometry, mill and rasterization style.
 
-Additionally, the measure tool (the icon with the ruler) can be used to measure distances and angles: select the tool and drag with the mouse over the plot. A click removes the measurement.
+Additionally, the measure tool (the icon with the ruler, it needs bokeh 3.8 and therefore Python 3.10 or newer) can be used to measure distances and angles: select the tool and drag with the mouse over the plot. A click removes the measurement.
 
 .. fibomat-plot:: ../examples/getting_started.py
 

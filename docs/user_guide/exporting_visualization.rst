@@ -182,6 +182,46 @@ the export yields a file with the content
 Source: `https://github.com/fib-o-mat/fib-o-mat/blob/main/examples/exporting_advanced.py <https://github.com/fib-o-mat/fib-o-mat/blob/main/examples/exporting_advanced.py>`__
 
 
+NPVE shape files and step and repeat lists
+++++++++++++++++++++++++++++++++++++++++++
+
+Two backends in :mod:`fibomat.default_backends.npve` write XML files for the NPVE patterning software:
+
+    * :class:`~fibomat.default_backends.npve.NPVESingleSite` writes a shape file (``*.nps``) with the patterns of one site, relative to the center of the site. The file contains neither a stage position nor a field of view. A layout with several non-empty sites raises a ``ValueError``; use :meth:`~fibomat.layout.Layout.export_multi` to get one file per site.
+    * :class:`~fibomat.default_backends.npve.NPVEStepAndRepeat` writes a step and repeat list with all sites and the stage moves between them. It replaces the deprecated ``StepAndRepeatBackend``.
+
+Both backends support the same shapes and raster styles and need an ``NPVEMill``. ::
+
+    from fibomat.default_backends.npve import NPVEMill, NPVESingleSite, NPVEStepAndRepeat
+
+    mill = NPVEMill(dwell_time=1 * unit('µs'), repeats=2)
+
+    # ...
+
+    layout.export(NPVESingleSite).save('patterns.nps')
+    layout.export(NPVEStepAndRepeat).save('patterns.xml')
+
+The header of a shape file can be set with the arguments ``system_name``, ``beam`` and ``aperture`` of :class:`~fibomat.default_backends.npve.NPVESingleSite`.
+
+Both backends validate the patterns on export: the dose of the mill must fit to the raster style, i.e. a spot dose (e.g. ``unit('ions')``) for spots, a line dose (e.g. ``unit('nC / µm')``) for curves and an area dose (e.g. ``unit('ions / nm**2')``) for areas. Otherwise, a :class:`~fibomat.units.DimensionError` is raised.
+
+Deflection lists
+****************
+
+A pattern with the shape :class:`~fibomat.shapes.RasterizedPoints` and the raster style :class:`~fibomat.raster_styles.zero_d.PreRasterized` is written as deflection list by both backends. The dwell time of a point is the dwell time of the mill multiplied by the weight of the point, so the weights must be positive integers. The mill must define the number of repeats; a dose is not supported. ::
+
+    import numpy as np
+
+    from fibomat.raster_styles import zero_d
+    from fibomat.shapes import RasterizedPoints
+
+    # x, y, multiple of the dwell time
+    points = np.array([[0.0, 0.0, 1], [0.1, 0.0, 2], [0.2, 0.0, 4]])
+
+    site.create_pattern(RasterizedPoints(points, False) * unit('µm'), mill, zero_d.PreRasterized())
+
+Lists with up to ``max_embedded_points`` points (default: 5000) are embedded in the file. Longer lists are written to a binary file next to the file, called ``<file name>_<shape id>.dat``; keep it in the same folder. The binary file contains two unsigned integers (``1`` and the number of points), followed by ``x``, ``y`` (32 bit floats in µm) and the repeat value (32 bit unsigned integer) of each point. All values are little endian. Set ``max_embedded_points=0`` to write all lists to binary files. In both cases the positions are stored with single precision.
+
 Export sites individually
 +++++++++++++++++++++++++
 
@@ -281,6 +321,37 @@ The position of an annotation is always given in the global coordinate system. :
     layout.plot()
 
 Colors must be defined in a way that bokeh can understand them (cf. the `bokeh documentation <https://docs.bokeh.org/en/latest/docs/user_guide/styling.html#specifying-colors>`__).
+
+Vector graphics (SVG)
++++++++++++++++++++++
+
+The :class:`~fibomat.default_backends.SVGBackend` draws a layout as svg file, e.g. for publications or to edit the design in `Inkscape <https://inkscape.org>`__. Every site is an Inkscape layer. Shapes with a two-dimensional raster style are drawn filled, all other shapes as lines and spots as dots. Arcs are exported as exact svg arcs. ::
+
+    from fibomat.default_backends import SVGBackend
+
+    layout.export(SVGBackend).save('layout.svg')
+
+The most important options are
+
+    * ``pixel_size``: length of one pixel (svg user unit), by default 0.01 µm,
+    * ``show_fov``: if ``True`` (default), the fields of view of the sites are drawn as dashed rectangles,
+    * ``color_by``: ``'dwell_time'``, ``'repeats'`` or ``'dose'`` (see :class:`~fibomat.default_backends.ColorBy`) encodes this mill setting by color,
+    * ``colormap``: the `matplotlib color map <https://matplotlib.org/stable/users/explain/colors/colormaps.html>`__ (name or object) used with ``color_by``, by default ``'viridis'``,
+    * ``color_bar``: if ``True`` (default), a color bar with the value range is drawn next to the layout,
+    * ``stroke_width`` and ``spot_radius``: line width and radius of the spots as lengths (by default relative to the size of the drawing),
+    * ``color``, ``missing_color`` and ``fov_color``: the color of the shapes without color map, of shapes whose mill does not have the setting ``color_by``, and of the fields of view.
+
+The values for ``color_by`` are read from the mill of each pattern (``mill['dwell_time']``, ``mill['repeats']`` or ``mill['dose']``). A :class:`~fibomat.mill.Mill` has a dwell time and a number of repeats; a dose is available for mills which store one, e.g. a :class:`~fibomat.mill.DoseMill` or the ``NPVEMill``. Values with different dimensions, e.g. spot doses and area doses, get separate color scales and color bars. Color maps need matplotlib, which is installed with the ``exporting`` extra.
+
+The following plot colors the shapes by their dwell time (source: `examples/svg_export.py <https://github.com/fib-o-mat/fib-o-mat/blob/main/examples/svg_export.py>`__) ::
+
+    layout.export(SVGBackend, color_by='dwell_time', colormap='viridis').save('svg_export.svg')
+
+.. figure:: /_static/svg_export_dwell_time.svg
+    :align: center
+    :width: 700px
+
+    Layout exported with the SVG backend; the dwell times are encoded by the color map ``viridis``.
 
 Ion beam simulation
 +++++++++++++++++++

@@ -38,7 +38,22 @@ Backends and custom raster styles may need parameters which are not part of the 
 
 Reading a setting which does not exist (or is ``None``) raises a ``KeyError`` with a hint. In the section about extending fib-o-mat, an example is given.
 
-.. note:: The raster styles and backends which are part of fib-o-mat need a :class:`~fibomat.mill.Mill` (a constant dwell time) or a mill which is derived from it. Mills with a position dependent dwell time (:class:`~fibomat.mill.DDDMill`, :class:`~fibomat.mill.SILMill`) are not supported yet.
+.. note:: The raster styles which are part of fib-o-mat need a :class:`~fibomat.mill.Mill` (a constant dwell time) or a mill which is derived from it. Mills with a position dependent dwell time (:class:`~fibomat.mill.DDDMill`, :class:`~fibomat.mill.SILMill`) are not supported yet.
+
+Defining a mill by its dose
++++++++++++++++++++++++++++
+
+Some patterning systems calculate the number of repeats from a dose (e.g. NPVE). For these, the :class:`~fibomat.mill.DoseMill` is defined by exactly two of the three settings dwell time, number of repeats and dose ::
+
+    from fibomat.mill import DoseMill
+
+    mill = DoseMill(dwell_time=1 * unit('µs'), dose=2 * unit('ions / nm**2'))
+    mill = DoseMill(repeats=10, dose=100 * unit('ions'))
+    mill = DoseMill(dwell_time=1 * unit('µs'), repeats=10)
+
+The setting which is not given is ``None`` (and ``mill['dose']`` etc. raises a ``KeyError``); it is not calculated by the mill, because this needs the beam current and the pitches of the raster style. The dose is a charge per spot (e.g. ``unit('ions')``), per length (curves, e.g. ``unit('nC / µm')``) or per area (areas, e.g. ``unit('ions / nm**2')``).
+
+A :class:`~fibomat.mill.DoseMill` is meant for backends which pass the settings to the patterning software; it cannot be used with the raster styles of fib-o-mat, which need a :class:`~fibomat.mill.Mill`. The ``NPVEMill`` of the NPVE step and repeat backend is a :class:`~fibomat.mill.DoseMill` which always needs a dwell time. Its parameter ``scan_direction`` is deprecated.
 
 |:test_tube:| Defining an ion beam shape
 ++++++++++++++++++++++++++++++++++++++++

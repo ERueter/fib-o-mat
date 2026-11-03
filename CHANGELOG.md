@@ -4,7 +4,22 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added
+- `SVGBackend` (`fibomat.default_backends`) is reworked for the current API and draws all shapes of the library: one Inkscape layer per site, filled areas, curves as lines, spots as dots, exact svg arcs (arc splines), shapes with holes (`Ring`, `HollowArcSpline`) and arrangements/texts split into their shapes. New options: `show_fov` (dashed fields of view of the sites), `color_by` (`ColorBy`: `'dwell_time'`, `'repeats'` or `'dose'`, read from the mill of each pattern) with a matplotlib `colormap` and an optional `color_bar`; values with different dimensions (e.g. spot and area doses) get separate color scales. Shapes without the setting are drawn in `missing_color`. The svg file is written with the standard library (no svgwrite), `to_string()` returns it, `color_scales` the value ranges. **Breaking:** the old options `pixel_scale` (now `pixel_size`), `stroke_width` (now a length) and `spot_radius` take `DimFloat` lengths; all arguments are keyword-only.
+- `DoseMill` (`fibomat.mill`): a mill defined by exactly two of dwell time, number of repeats and dose (the third setting is None; it is derived by the backend or the patterning software). `fibomat.mill.Dose` is the type of doses (spot, line or area dose). It is meant for backends; the raster styles still need a `Mill`.
+- `NPVESingleSite` (`fibomat.default_backends.npve`): writes the patterns of one site as NPVE shape file (`*.nps`). The shape code is shared with the step and repeat backend (new base class `NPVEBackendBase`). A second non-empty site raises `ValueError`; empty sites are ignored. The header can be set with `system_name`, `beam` and `aperture`.
+- Deflection lists in `NPVESingleSite` and `NPVEStepAndRepeat`: a pattern with `RasterizedPoints` and `zero_d.PreRasterized` becomes a `TDeflectionListShape` (weights are integer multiples of the dwell time, the mill must have repeats). Lists with up to `max_embedded_points` points (default 5000) are embedded, longer lists are written to a binary file `<stem>_<shape id>.dat` next to the file.
+- Optional hook `BackendBase.validate_pattern(ptn)`: it is called for every shape before it is processed and accepts everything by default. `NPVESingleSite` and `NPVEStepAndRepeat` use it to check that the dose of the mill fits to the dimension of the raster style (spot, line or area dose); a mismatch raises a `DimensionError` which names the pattern, instead of a pint `DimensionalityError` deep in the export.
+- `matplotlib` is part of the `exporting` extra (color maps of the SVG backend).
+- User guide section "Vector graphics (SVG)" and the example `examples/svg_export.py`.
+
+### Deprecated
+- `StepAndRepeatBackend` is renamed to `NPVEStepAndRepeat`; the old name emits a `DeprecationWarning`.
+- `NPVEMill(scan_direction=...)` and `NPVEMill.scan_direction` emit a `DeprecationWarning`. The step and repeat backend still exports the scan direction.
+
 ### Changed
+- `NPVESingleSite` and `NPVEStepAndRepeat` write `LockSpacingDuDv` as `false` (was `true`); `LockSpacingDpDr` stays `true`. The files which are generated therefore differ in this value.
+- `NPVEMill` is derived from `DoseMill` (unchanged rules: a dwell time and either repeats or a dose).
 - **Breaking:** the lengths of `DimLattice.from_counts`, `DimLattice.from_rect` and `DimLatticeBuilder.rectangular` are annotated as `DimFloat[LengthDimension]` and checked with `check_units`: a value without a unit or with another dimension raises a `DimensionError` (a `TypeError`; before: `TypeError` for plain numbers and `ValueError` for other dimensions). Negative or zero lengths still raise `ValueError`.
 - The dimensions of all other lengths, times, currents and doses of the public API are annotated with `DimFloat[...]` and checked with `check_units` (raster style pitches, `GaussBeam`, `PatterningDurationCalculator`, `SpotListBackend`, `BokehBackend`, the step and repeat backend, `Mill`, `NPVEMill`, `LineByLineOutlined`). **Breaking:** a value without a unit or with a wrong dimension raises a `DimensionError` (a `TypeError`) instead of `ValueError` (wrong dimension) or `TypeError` (no unit); values which are not positive still raise `ValueError`.
 - New dimensions `CurrentDimension` and `CurrentDensityDimension` and the current units (`A`, `mA`, `µA`, `nA`, `pA`, `fA`) in `unit()`; the ion flux of `GaussBeam` is a `DimFloat[CurrentDensityDimension]`.
@@ -13,6 +28,8 @@ All notable changes to this project are documented in this file.
 - `check_units` resolves the annotations on the first call, so methods can be annotated with the class they belong to.
 
 ### Fixed
+- `pyhershey` is a dependency of the package again. Without it, `fibomat.composite_shapes`, `fibomat.backend` and `fibomat.default_backends` could not be imported after a plain `pip install fibomat`.
+- Python 3.8 and 3.9 work again with the `exporting` extra: bokeh is pinned per Python version (`bokeh>=3.8,<4` from Python 3.10 on, `bokeh>=3.1,<3.8` below). Older versions of bokeh plot without the `MeasureTool` (it needs the API of bokeh 3.8, see `MEASURE_TOOL_AVAILABLE`). The NPVE schemas no longer use API which only exists in new versions of marshmallow. The reference file tests ignore whitespace inside of empty elements, which depends on the version of xmltodict.
 - The API reference pages (`docs/api/`) were not part of the repository (they were ignored by `.gitignore`), so the hosted documentation had no API reference.
 
 ## [0.7.1] - 2026-10-07
