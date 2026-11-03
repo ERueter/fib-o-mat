@@ -12,7 +12,8 @@ import typing as t
 
 import numpy as np
 
-from fibomat.default_backends.npve.step_and_repeat.npve_mill import NPVEMill
+from fibomat.default_backends.npve.step_and_repeat.deflection_list import DeflectionList
+from fibomat.default_backends.npve.step_and_repeat.npve_mill import NPVEMill, scan_direction_of
 from fibomat.default_backends.npve.step_and_repeat.outline import LineByLineOutlined
 from fibomat.linalg import VectorLike
 from fibomat.raster_styles import RasterStyle, ScanSequence, one_d, two_d, zero_d
@@ -27,6 +28,20 @@ _MICRON = unit('µm')
 
 class _Mill:
     """Mill settings of a shape: pitches, scan direction, dose or number of repeats."""
+
+    def _set_default_values_for_deflection_list(self, raster_style: RasterStyle) -> None:
+        if not isinstance(raster_style, zero_d.PreRasterized):
+            raise TypeError("Deflection lists need the raster style PreRasterized.")
+
+        # the pitches are not used, the values are the ones of the files written by NPVE
+        self.target_du = 0.00025
+        self.target_dv = 0.00025
+        self.target_dr = 0.001
+        self.target_dp = 0.001
+
+        self.raster_style = 0
+        self.angle = np.pi / 2
+        self.operation_id = -1
 
     def _set_default_values_for_raster_style(self, raster_style: RasterStyle) -> None:
         if isinstance(raster_style, zero_d.SingleSpot):
@@ -78,11 +93,13 @@ class _Mill:
         else:
             raise TypeError("Unsupported raster style.")
 
-    def __init__(self, mill: NPVEMill, raster_style: RasterStyle):
+    def __init__(self, mill: NPVEMill, raster_style: RasterStyle, is_deflection_list: bool = False):
         """
         Args:
             mill (NPVEMill): mill
-            raster_style (RasterStyle): raster style (SingleSpot, Curve or LineByLine)
+            raster_style (RasterStyle): raster style (SingleSpot, Curve or LineByLine; PreRasterized for deflection
+                lists)
+            is_deflection_list (bool): True if the mill belongs to a deflection list
 
         Raises:
             TypeError: Raised if the mill is no NPVEMill or the raster style is not supported.
@@ -92,7 +109,10 @@ class _Mill:
         if not isinstance(mill, NPVEMill):
             raise TypeError(f"Mill must be NPVEMill, got {type(mill).__name__}.")
 
-        self._set_default_values_for_raster_style(raster_style)
+        if is_deflection_list:
+            self._set_default_values_for_deflection_list(raster_style)
+        else:
+            self._set_default_values_for_raster_style(raster_style)
 
         self.num_frames = 0
         self.target_dose = 0
@@ -199,6 +219,8 @@ class FIBShape:
         shape_texture: t.Optional[ShapeTexture] = None,
         outline_thickness: t.Optional[float] = None,
         angle: t.Optional[float] = None,
+        deflection_list: t.Optional[DeflectionList] = None,
+        shape_name: t.Optional[str] = None,
     ):
         """
         Args:
@@ -212,14 +234,16 @@ class FIBShape:
             outline_thickness (float, optional): outline thickness (in µm) of shapes which are outlined by NPVE (rings).
                 If the raster style is :class:`LineByLineOutlined`, the outline is defined by the style.
             angle (float, optional): angle of the shape. Default: the scan direction of the mill.
+            deflection_list (DeflectionList, optional): points of a deflection list
+            shape_name (str, optional): name of the shape. Default: `class_` without the leading "T".
         """
-        self.mill = _Mill(mill, raster_style)  # (checks the type of the mill)
+        self.mill = _Mill(mill, raster_style, deflection_list is not None)  # (checks the type of the mill)
 
         self.class_ = class_
         self.display_id = id
-        self.shape_name = class_[1:]
+        self.shape_name = class_[1:] if shape_name is None else shape_name
 
-        self.angle = mill.scan_direction if angle is None else angle
+        self.angle = scan_direction_of(mill) if angle is None else angle
 
         self.hole = False
 
@@ -250,6 +274,19 @@ class FIBShape:
                 "_pen_alignment": 1,
                 "_outline_offset": 0,
                 "_direction": 1 if self.class_ == "TRing" else 0,
+            }
+
+        if deflection_list is not None:
+            self.deflection_list_data = deflection_list
+            # the outline of the files written by NPVE
+            self.outline = {
+                "_outlined": True,
+                "_thickness": 0.5,
+                "_node_style": 0,
+                "_stroke_style": 0,
+                "_pen_alignment": 0,
+                "_outline_offset": 0,
+                "_direction": 0,
             }
 
         if shape_texture:

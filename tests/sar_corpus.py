@@ -4,6 +4,7 @@ The XML files in `tests/data/sar_golden` were created with the backend *before* 
 the file format did not change at all.
 """
 import typing as t
+import warnings
 
 import numpy as np
 
@@ -23,7 +24,10 @@ def um(x: float, y: float) -> DimVector:
 
 
 def repeats_mill(repeats: int = 2, dwell: float = 1., scan_direction: t.Optional[float] = None) -> NPVEMill:
-    return NPVEMill(dwell_time=dwell * unit('µs'), repeats=repeats, scan_direction=scan_direction)
+    # scan_direction is deprecated, but the corpus still checks that it is exported unchanged
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore', DeprecationWarning)
+        return NPVEMill(dwell_time=dwell * unit('µs'), repeats=repeats, scan_direction=scan_direction)
 
 
 def dose_mill(dose: str, value: float = 2., dwell: float = 1., scan_direction: t.Optional[float] = None) -> NPVEMill:

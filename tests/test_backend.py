@@ -6,7 +6,7 @@ import pytest
 
 from fibomat import backend as backend_package
 from fibomat import shapes
-from fibomat.arrangements import DimGroup
+from fibomat.arrangements import DimGroup, Group
 from fibomat.backend import BackendBase, ShapeNotSupportedError, shape_type
 from fibomat.composite_shapes import Text
 from fibomat.layout import Layout, Pattern, Site
@@ -285,3 +285,45 @@ class TestWithLayout:
         assert isinstance(backend, Recorder)
         assert backend.description == 'design'
         assert [name for name, _ in backend.calls] == ['line']
+
+
+class _RejectingBackend(BackendBase):
+    def __init__(self, description=None):
+        super().__init__(description)
+        self.validated = []
+        self.drawn = []
+
+    def validate_pattern(self, ptn):
+        self.validated.append(ptn)
+        if ptn.description == 'bad':
+            raise ValueError('rejected')
+
+    def line(self, ptn):
+        self.drawn.append(ptn)
+
+
+class TestValidatePattern:
+    @staticmethod
+    def pattern(description=None, shape=None):
+        style = one_d.Curve(1 * unit('nm'), ScanSequence.CONSECUTIVE)
+        return Pattern(
+            (shape or Line((0, 0), (1, 1))) * unit('µm'), Mill(1 * unit('ms'), 1), style, description=description
+        )
+
+    def test_default_accepts_everything(self):
+        assert BackendBase().validate_pattern(self.pattern()) is None
+
+    def test_is_called_before_the_shape_method(self):
+        backend = _RejectingBackend()
+        backend.process_pattern(self.pattern())
+        assert len(backend.validated) == len(backend.drawn) == 1
+
+        with pytest.raises(ValueError, match='rejected'):
+            backend.process_pattern(self.pattern('bad'))
+        assert len(backend.drawn) == 1
+
+    def test_is_called_for_each_shape_of_an_arrangement(self):
+        backend = _RejectingBackend()
+        backend.process_pattern(self.pattern(shape=Group([Line((0, 0), (1, 1)), Line((0, 1), (1, 2))])))
+        assert len(backend.validated) == 2
+        assert all(isinstance(ptn.dim_shape.shape, Line) for ptn in backend.validated)

@@ -1,7 +1,7 @@
 """Provides the raster style :class:`LineByLineOutlined` and its enums.
 
 The style fills an area line by line like :class:`~fibomat.raster_styles.two_d.LineByLine` and, in addition, exposes
-the outline of the area. It is only supported by the :class:`StepAndRepeatBackend`, where NPVE does the work.
+the outline of the area. It is only supported by the NPVE backends, where NPVE does the work.
 
 Example:
     >>> from fibomat.raster_styles import ScanSequence, one_d

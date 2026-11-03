@@ -5,7 +5,7 @@ import pickle
 import numpy as np
 import pytest
 
-from fibomat.mill import DDDMill, Mill, MillBase, SILMill, SpecialMill
+from fibomat.mill import DDDMill, DoseMill, Mill, MillBase, SILMill, SpecialMill
 from fibomat.units import DimensionError, unit
 
 
@@ -115,3 +115,68 @@ class TestSpecialMill:
 def test_ddd_and_sil_mill_are_exported():
     # not reworked yet (see TODO.md); only the exports are checked
     assert issubclass(DDDMill, MillBase) and issubclass(SILMill, DDDMill)
+
+
+class TestDoseMill:
+    @pytest.mark.parametrize('kwargs, missing', [
+        (dict(dwell_time=1. * unit('µs'), repeats=2), 'dose'),
+        (dict(dwell_time=1. * unit('µs'), dose=2. * unit('ions / nm**2')), 'repeats'),
+        (dict(repeats=2, dose=5. * unit('ions')), 'dwell_time'),
+    ])
+    def test_two_of_three(self, kwargs, missing):
+        mill = DoseMill(**kwargs)
+        assert getattr(mill, missing) is None
+        for name, value in kwargs.items():
+            assert getattr(mill, name) == value
+            assert mill[name] == value
+        with pytest.raises(KeyError):
+            mill[missing]
+
+    @pytest.mark.parametrize('kwargs', [
+        dict(),
+        dict(dwell_time=1. * unit('µs')),
+        dict(dose=1. * unit('ions')),
+        dict(dwell_time=1. * unit('µs'), repeats=2, dose=1. * unit('ions')),
+    ])
+    def test_exactly_two_settings(self, kwargs):
+        with pytest.raises(ValueError, match='Exactly two'):
+            DoseMill(**kwargs)
+
+    @pytest.mark.parametrize('dose', ['ions', 'nC / µm', 'ions / nm**2', 'pA * µs'])
+    def test_dose_dimensions(self, dose):
+        assert DoseMill(repeats=1, dose=1. * unit(dose)).dose.m_as(dose) == pytest.approx(1.)
+
+    def test_invalid_dimensions(self):
+        with pytest.raises(DimensionError, match='dose'):
+            DoseMill(repeats=1, dose=1. * unit('µm'))
+        with pytest.raises(DimensionError, match='dose'):
+            DoseMill(repeats=1, dose=1.)
+        with pytest.raises(DimensionError, match='dwell_time'):
+            DoseMill(dwell_time=1. * unit('µm'), repeats=1)
+
+    def test_invalid_values(self):
+        with pytest.raises(ValueError, match='dwell_time'):
+            DoseMill(dwell_time=0. * unit('µs'), repeats=1)
+        with pytest.raises(ValueError, match='dose'):
+            DoseMill(repeats=1, dose=-1. * unit('ions'))
+        with pytest.raises(ValueError, match='at least 1'):
+            DoseMill(dwell_time=1. * unit('µs'), repeats=0)
+        for repeats in (1.5, 'a', True):
+            with pytest.raises(TypeError):
+                DoseMill(dwell_time=1. * unit('µs'), repeats=repeats)
+
+    def test_numpy_integer_repeats(self):
+        assert DoseMill(dwell_time=1. * unit('µs'), repeats=np.int64(3)).repeats == 3
+
+    def test_further_settings(self):
+        mill = DoseMill(dwell_time=1. * unit('µs'), repeats=2, aperture=3)
+        assert mill['aperture'] == 3
+
+    def test_keyword_only(self):
+        with pytest.raises(TypeError):
+            DoseMill(1. * unit('µs'), 2)  # pylint: disable=too-many-function-args
+
+    def test_is_not_a_mill(self):
+        # the raster styles need a Mill (constant dwell time and repeats)
+        mill = DoseMill(dwell_time=1. * unit('µs'), repeats=2)
+        assert isinstance(mill, MillBase) and not isinstance(mill, Mill)

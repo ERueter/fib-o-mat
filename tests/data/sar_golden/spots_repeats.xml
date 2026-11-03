@@ -83,7 +83,7 @@
 						<BeamID>0</BeamID>
 						<OptimizeBeamI>false</OptimizeBeamI>
 						<RasterStyle>0</RasterStyle>
-						<LockSpacingDuDv>true</LockSpacingDuDv>
+						<LockSpacingDuDv>false</LockSpacingDuDv>
 						<LockSpacingDpDr>true</LockSpacingDpDr>
 						<Defocus>0.0</Defocus>
 						<DeltaStigX>0.0</DeltaStigX>
@@ -147,7 +147,7 @@
 						<BeamID>0</BeamID>
 						<OptimizeBeamI>false</OptimizeBeamI>
 						<RasterStyle>0</RasterStyle>
-						<LockSpacingDuDv>true</LockSpacingDuDv>
+						<LockSpacingDuDv>false</LockSpacingDuDv>
 						<LockSpacingDpDr>true</LockSpacingDpDr>
 						<Defocus>0.0</Defocus>
 						<DeltaStigX>0.0</DeltaStigX>

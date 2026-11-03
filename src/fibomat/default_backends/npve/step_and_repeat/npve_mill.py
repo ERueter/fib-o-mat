@@ -11,28 +11,28 @@ Example:
 """
 from __future__ import annotations
 
-import operator
 import typing as t
+import warnings
 
-from fibomat.mill import MillBase
-from fibomat.units import (
-    AreaDoseDimension, DimFloat, LineDoseDimension, SpotDoseDimension, TimeDimension, check_units
+from fibomat.mill.dose_mill import Dose, DoseMill
+from fibomat.units import DimFloat, TimeDimension, check_units
+
+
+__all__ = ['NPVEMill', 'Dose']
+
+
+_SCAN_DIRECTION_DEPRECATION = (
+    'scan_direction of NPVEMill is deprecated and will be removed in a future version.'
 )
 
 
-__all__ = ['NPVEMill']
-
-
-Dose = t.Union[DimFloat[SpotDoseDimension], DimFloat[LineDoseDimension], DimFloat[AreaDoseDimension]]
-"""A dose: a charge (spot), a charge per length (curve) or a charge per area (area)."""
-
-
-class NPVEMill(MillBase):
+class NPVEMill(DoseMill):
     """Mill of the NPVE step and repeat backend.
 
-    Either the number of repeats or the dose is given (not both): with `repeats`, the pattern is exposed `repeats`
-    times, with a `dose` NPVE calculates the number of repeats. The dose is a charge (``unit('ions')``) for spots, a
-    charge per length for curves (e.g. ``unit('nC/µm')``) and a charge per area for areas (e.g. ``unit('nC/µm**2')``).
+    The dwell time is required. Either the number of repeats or the dose is given (not both): with `repeats`, the
+    pattern is exposed `repeats` times, with a `dose` NPVE calculates the number of repeats. The dose is a charge
+    (``unit('ions')``) for spots, a charge per length for curves (e.g. ``unit('nC/µm')``) and a charge per area for
+    areas (e.g. ``unit('nC/µm**2')``), see :class:`~fibomat.mill.DoseMill`.
     """
 
     @check_units
@@ -50,7 +50,8 @@ class NPVEMill(MillBase):
             dwell_time (DimFloat): dwell time per spot, e.g. ``1. * unit('µs')``
             repeats (int, optional): number of repeats (at least 1)
             dose (DimFloat, optional): dose (see above)
-            scan_direction (float, optional): rotation of the scan direction. 0: right to left, pi/2: bottom to top.
+            scan_direction (float, optional): deprecated. Rotation of the scan direction. 0: right to left, pi/2:
+                bottom to top.
             **kwargs: further settings of the mill
 
         Raises:
@@ -62,23 +63,8 @@ class NPVEMill(MillBase):
         if (repeats is not None and dose is not None) or (repeats is None and dose is None):
             raise ValueError('One of repeats or dose must be given and not both or none of them.')
 
-        if not dwell_time.magnitude > 0.:
-            raise ValueError('dwell_time must be positive.')
-
-        if repeats is not None:
-            if isinstance(repeats, bool):
-                raise TypeError('repeats must be an int.')
-            try:
-                repeats = operator.index(repeats)
-            except TypeError:
-                raise TypeError(f'repeats must be an int, got {type(repeats).__name__}.') from None
-            if repeats < 1:
-                raise ValueError('repeats must be at least 1.')
-
-        if dose is not None and not dose.magnitude > 0.:
-            raise ValueError('dose must be positive.')
-
         if scan_direction is not None:
+            warnings.warn(_SCAN_DIRECTION_DEPRECATION, DeprecationWarning, stacklevel=3)
             scan_direction = float(scan_direction)
 
         self._scan_direction = scan_direction
@@ -95,28 +81,25 @@ class NPVEMill(MillBase):
         return self['dwell_time']
 
     @property
-    def repeats(self) -> t.Optional[int]:
-        """Number of repeats, None if the dose is given.
-
-        Access:
-            get
-        """
-        return self._kwargs['repeats']
-
-    @property
-    def dose(self) -> t.Optional[Dose]:
-        """Dose, None if the number of repeats is given.
-
-        Access:
-            get
-        """
-        return self._kwargs['dose']
-
-    @property
     def scan_direction(self) -> t.Optional[float]:
         """Rotation of the scan direction (0: right to left, pi/2: bottom to top), None if it is not set.
 
+        Deprecated: ``scan_direction`` will be removed in a future version.
+
         Access:
             get
         """
+        warnings.warn(_SCAN_DIRECTION_DEPRECATION, DeprecationWarning, stacklevel=2)
         return self._scan_direction
+
+
+def scan_direction_of(mill: NPVEMill) -> t.Optional[float]:
+    """The scan direction of a mill, without a deprecation warning (used by the step and repeat backend).
+
+    Args:
+        mill (NPVEMill): mill
+
+    Returns:
+        Optional[float]: scan direction or None
+    """
+    return mill._scan_direction  # pylint: disable=protected-access

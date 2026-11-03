@@ -10,7 +10,7 @@ class OrderedSchema(Schema):
 class EnvelopeBaseSchema(OrderedSchema):
     __envelope__ = None
 
-    @post_dump(pass_collection=False)
+    @post_dump
     def wrap_with_envelope(self, data, many):
         return {self.__envelope__: data}
 

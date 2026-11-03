@@ -91,7 +91,7 @@ class _MillSchema(OrderedSchema):
     # fibomat eq. is ScanSequence
     raster_style = fields.Int(data_key="RasterStyle")
 
-    _lock_spacing_dudv = LCBool(data_key="LockSpacingDuDv", dump_default=True)
+    _lock_spacing_dudv = LCBool(data_key="LockSpacingDuDv", dump_default=False)
     _lock_spacing_dpdr = LCBool(data_key="LockSpacingDpDr", dump_default=True)
 
     _defocus = fields.Float(data_key="Defocus", dump_default=0.0)
@@ -138,6 +138,45 @@ class _ShapeTexture(OrderedSchema):
     encoded_image = fields.Nested(_EncodedImage, data_key="EncodedImage")
 
 
+class _CenterOffset(OrderedSchema):
+    x = fields.Float(data_key="X")
+    y = fields.Float(data_key="Y")
+
+
+class _RawBoundingBox(OrderedSchema):
+    x_min = fields.Float(data_key="XMin")
+    x_max = fields.Float(data_key="XMax")
+    y_min = fields.Float(data_key="YMin")
+    y_max = fields.Float(data_key="YMax")
+
+
+class _DeflectionPoint(OrderedSchema):
+    x = fields.Float(data_key="X")
+    y = fields.Float(data_key="Y")
+    # multiple of the dwell time of the mill
+    repeat = fields.Int(data_key="Repeat")
+
+
+class _DeflectionPoints(OrderedSchema):
+    points = fields.List(fields.Nested(_DeflectionPoint), data_key="Pt")
+
+
+class _PointsList(OrderedSchema):
+    # only if the points are stored in a binary file
+    data_filename = fields.Str(data_key="DataFilename")
+    units = fields.Int(data_key="Units")
+    raw_bounding_box = fields.Nested(_RawBoundingBox, data_key="RawBoundingBox")
+    count = fields.Int(data_key="Count")
+    rep_count = fields.Int(data_key="RepCount")
+    # only if the points are embedded
+    sub_list = fields.Nested(_DeflectionPoints, data_key="SubList")
+
+
+class _DeflectionListData(OrderedSchema):
+    center_offset = fields.Nested(_CenterOffset, data_key="CenterOffset")
+    points_list = fields.Nested(_PointsList, data_key="PointsList")
+
+
 class FIBShapeSchema(OrderedSchema):
     class_ = fields.Str(data_key="Class")
 
@@ -168,3 +207,6 @@ class FIBShapeSchema(OrderedSchema):
     has_bitmap = LCBool(data_key="HasBitmap")
 
     mill = fields.Nested(_MillSchema, data_key="Mill")
+
+    # only for deflection lists
+    deflection_list_data = fields.Nested(_DeflectionListData, data_key="DeflectionListData")

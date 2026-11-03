@@ -4,6 +4,7 @@ The golden master tests compare the generated XML with files which were created 
 (`tests/sar_corpus.py`): the file format must not change at all.
 """
 import pathlib
+import re
 import warnings
 
 import pytest
@@ -11,9 +12,10 @@ import xmltodict
 
 from fibomat.composite_shapes import Ring
 from fibomat.default_backends.npve import (
-    LineByLineOutlined, NPVEMill, OutlineAlignement, OutlineNodeStyle, OutlineScanStyle, StepAndRepeatBackend
+    LineByLineOutlined, NPVEMill, OutlineAlignement, OutlineNodeStyle, OutlineScanStyle, NPVEStepAndRepeat
 )
 from fibomat.layout import Layout
+from fibomat.mill import DoseMill
 from fibomat.raster_styles import ScanSequence, one_d, two_d, zero_d
 from fibomat.shapes import Circle, Ellipse, Rect, Spot, Line, ArcSpline
 from fibomat.units import DimensionError, unit
@@ -25,13 +27,18 @@ from sar_corpus import curve, dose_mill, lines, outlined, repeats_mill, single_s
 GOLDEN = pathlib.Path(__file__).parent / 'data' / 'sar_golden'
 
 
+def normalized(xml):
+    """Remove the whitespace inside of empty elements: it does not matter and depends on the version of xmltodict."""
+    return re.sub(r'<(\w+)>\s+</\1>', r'<\1></\1>', xml)
+
+
 @pytest.mark.parametrize('name', sorted(sar_corpus.cases()))
 def test_file_format_did_not_change(name):
     layout, kwargs = sar_corpus.cases()[name]
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
-        generated = layout.export(StepAndRepeatBackend, **kwargs)._to_str()  # pylint: disable=protected-access
-    assert generated == (GOLDEN / f'{name}.xml').read_text(encoding='utf-8')
+        generated = layout.export(NPVEStepAndRepeat, **kwargs)._to_str()  # pylint: disable=protected-access
+    assert normalized(generated) == normalized((GOLDEN / f'{name}.xml').read_text(encoding='utf-8'))
 
 
 def test_all_golden_files_are_used():
@@ -41,7 +48,7 @@ def test_all_golden_files_are_used():
 def parse(layout, **kwargs):
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
-        text = layout.export(StepAndRepeatBackend, **kwargs)._to_str()  # pylint: disable=protected-access
+        text = layout.export(NPVEStepAndRepeat, **kwargs)._to_str()  # pylint: disable=protected-access
     return xmltodict.parse(text)['StepAndRepeatPatterning']
 
 
@@ -131,42 +138,42 @@ class TestStructure:
 class TestBackend:
     def test_save(self, tmp_path):
         layout, _ = sar_corpus.cases()['curves']
-        backend = layout.export(StepAndRepeatBackend)
+        backend = layout.export(NPVEStepAndRepeat)
         backend.save(tmp_path / 'file.xml')
         assert (tmp_path / 'file.xml').read_text(encoding='iso-8859-1') == backend._to_str()  # pylint: disable=protected-access
         assert (tmp_path / 'file.xml').read_bytes().startswith(b'<?xml version="1.0" encoding="iso-8859-1"?>')
 
     def test_print(self, capsys):
         layout, _ = sar_corpus.cases()['curves']
-        backend = layout.export(StepAndRepeatBackend)
+        backend = layout.export(NPVEStepAndRepeat)
         backend.print()
         assert capsys.readouterr().out.strip() == backend._to_str().strip()  # pylint: disable=protected-access
 
     def test_description(self):
-        assert StepAndRepeatBackend(description='x').description == 'x'
+        assert NPVEStepAndRepeat(description='x').description == 'x'
 
     def test_no_sites(self):
         with pytest.raises(RuntimeError, match='any sites'):
-            Layout().export(StepAndRepeatBackend)._to_str()  # pylint: disable=protected-access
+            Layout().export(NPVEStepAndRepeat)._to_str()  # pylint: disable=protected-access
 
     def test_only_empty_sites(self):
         layout = Layout()
         layout.create_site(um(0, 0), um(1, 1))
         with pytest.raises(RuntimeError, match='any sites'):
-            layout.export(StepAndRepeatBackend)._to_str()  # pylint: disable=protected-access
+            layout.export(NPVEStepAndRepeat)._to_str()  # pylint: disable=protected-access
 
     def test_empty_sites_can_be_forbidden(self):
         layout = Layout()
         layout.create_site(um(0, 0), um(1, 1))
         with pytest.raises(ValueError, match='may not be empty'):
-            layout.export(StepAndRepeatBackend, skip_empty_sites=False)
+            layout.export(NPVEStepAndRepeat, skip_empty_sites=False)
 
     def test_shared_patterns_need_empty_following_sites(self):
         layout = Layout()
         for _ in range(2):
             layout.create_site(um(0, 0), um(4, 4)).create_pattern(Rect(1, 1) * unit('µm'), repeats_mill(), lines())
         with pytest.raises(ValueError, match='Only first site'):
-            layout.export(StepAndRepeatBackend, share_patterns=True)
+            layout.export(NPVEStepAndRepeat, share_patterns=True)
 
     def test_shared_patterns(self):
         layout, kwargs = sar_corpus.cases()['shared_patterns']
@@ -181,48 +188,48 @@ class TestBackend:
             (Spot((1, 0)) * unit('µm'), repeats_mill(), zero_d.SingleSpot()),
         ])
         with pytest.warns(UserWarning, match='spot dose') as record:
-            layout.export(StepAndRepeatBackend)
+            layout.export(NPVEStepAndRepeat)
         assert len([warning for warning in record if 'spot dose' in str(warning.message)]) == 1
 
     def test_rotated_ellipse(self):
         layout = single_site([(Ellipse(2, 1, 0.5) * unit('µm'), repeats_mill(), lines())])
         with pytest.raises(NotImplementedError, match='Rotated ellipses'):
-            layout.export(StepAndRepeatBackend)
+            layout.export(NPVEStepAndRepeat)
 
     def test_unsupported_shape(self):
         from fibomat.backend import ShapeNotSupportedError
         layout = single_site([(ArcSpline([(0, 0, 0.3), (1, 0, 0)], False) * unit('µm'), repeats_mill(), curve())])
         with pytest.raises(ShapeNotSupportedError):
-            layout.export(StepAndRepeatBackend)
+            layout.export(NPVEStepAndRepeat)
 
     def test_mill_must_be_an_npve_mill(self):
         from fibomat.mill import Mill
         layout = single_site([(Rect(1, 1) * unit('µm'), Mill(1. * unit('µs'), 1), lines())])
         with pytest.raises(TypeError, match='NPVEMill'):
-            layout.export(StepAndRepeatBackend)
+            layout.export(NPVEStepAndRepeat)
 
     def test_unsupported_scan_sequences(self):
         with pytest.raises(NotImplementedError, match='not supported by NPVE'):
             single_site([(Rect(1, 1) * unit('µm'), repeats_mill(), lines(ScanSequence.BACKSTITCH))]).export(
-                StepAndRepeatBackend
+                NPVEStepAndRepeat
             )
         with pytest.raises(ValueError, match='CONSECUTIVE'):
             single_site([(Line((0, 0), (1, 1)) * unit('µm'), repeats_mill(), one_d.Curve(
-                0.1 * unit('µm'), ScanSequence.BACKSTITCH))]).export(StepAndRepeatBackend)
+                0.1 * unit('µm'), ScanSequence.BACKSTITCH))]).export(NPVEStepAndRepeat)
 
     def test_unsupported_raster_style(self):
         with pytest.raises(TypeError, match='Unsupported raster style'):
             single_site([(Rect(1, 1) * unit('µm'), repeats_mill(), zero_d.PreRasterized())]).export(
-                StepAndRepeatBackend
+                NPVEStepAndRepeat
             )
 
     def test_invalid_approximation_error(self):
         with pytest.raises(ValueError, match='positive'):
-            StepAndRepeatBackend(approximation_error=0. * unit('µm'))
+            NPVEStepAndRepeat(approximation_error=0. * unit('µm'))
         with pytest.raises(DimensionError):
-            StepAndRepeatBackend(approximation_error=1. * unit('s'))
+            NPVEStepAndRepeat(approximation_error=1. * unit('s'))
         with pytest.raises(DimensionError):
-            StepAndRepeatBackend(approximation_error=0.01)
+            NPVEStepAndRepeat(approximation_error=0.01)
 
     def test_bitmap_patterns(self, monkeypatch):
         # the bitmap backend is not reworked yet: a replacement which only provides the image is used
@@ -268,10 +275,36 @@ class TestBackend:
 
 class TestNPVEMill:
     def test_repeats(self):
-        mill = NPVEMill(dwell_time=2. * unit('µs'), repeats=3, scan_direction=0.5, custom='x')
-        assert (mill.repeats, mill.dose, mill.scan_direction) == (3, None, 0.5)
+        mill = NPVEMill(dwell_time=2. * unit('µs'), repeats=3, custom='x')
+        assert (mill.repeats, mill.dose) == (3, None)
         assert mill.dwell_time == 2. * unit('µs')
         assert mill['custom'] == 'x'
+
+    def test_is_a_dose_mill(self):
+        assert isinstance(NPVEMill(dwell_time=2. * unit('µs'), repeats=3), DoseMill)
+
+    def test_scan_direction_is_deprecated(self):
+        with pytest.warns(DeprecationWarning, match='scan_direction'):
+            mill = NPVEMill(dwell_time=2. * unit('µs'), repeats=3, scan_direction=0.5)
+        with pytest.warns(DeprecationWarning, match='scan_direction'):
+            assert mill.scan_direction == 0.5
+
+    def test_no_warning_without_scan_direction(self):
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', DeprecationWarning)
+            mill = NPVEMill(dwell_time=2. * unit('µs'), repeats=3)
+        with pytest.warns(DeprecationWarning):
+            assert mill.scan_direction is None
+
+    def test_backend_does_not_warn(self):
+        layout = Layout()
+        layout.create_site(um(0, 0), um(4, 4)).create_pattern(
+            Spot() * unit('µm'), repeats_mill(1, 0.1, scan_direction=0.5), zero_d.SingleSpot()
+        )
+        with warnings.catch_warnings():
+            warnings.simplefilter('error', DeprecationWarning)
+            backend = layout.export(NPVEStepAndRepeat)
+        assert backend
 
     def test_dose(self):
         mill = NPVEMill(dwell_time=1. * unit('µs'), dose=2. * unit('nC/µm'))

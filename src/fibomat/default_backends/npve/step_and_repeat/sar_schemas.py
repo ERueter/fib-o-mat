@@ -35,7 +35,7 @@ class SaRStagePosition(OrderedSchema):
 
 
 class _SaRShapesSchema(OrderedSchema):
-    shapes_list: fields.List[FIBShapeSchema] = fields.List(
+    shapes_list = fields.List(
         fields.Nested(FIBShapeSchema), data_key="FIBShape"
     )
 
@@ -58,13 +58,13 @@ class _SaRSiteSchema(OrderedSchema):
 
 
 class _SarSitesSchema(OrderedSchema):
-    sites_list: fields.List[_SaRSiteSchema] = fields.List(
+    sites_list = fields.List(
         fields.Nested(_SaRSiteSchema), data_key="Site"
     )
 
 
 class SaRSharedShapesSchema(OrderedSchema):
-    fib_shapes: fields.List[FIBShapeSchema] = fields.List(
+    fib_shapes = fields.List(
         fields.Nested(FIBShapeSchema), data_key="FIBShape"
     )
 

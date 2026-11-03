@@ -132,6 +132,18 @@ class BackendBase:
         """True if the shape method `name` is overridden (or newly declared) by the backend."""
         return getattr(type(self), name) is not vars(BackendBase).get(name)
 
+    def validate_pattern(self, ptn: Pattern) -> None:
+        """Check if a pattern can be exported by this backend. It is called for every pattern before it is processed.
+
+        This hook is optional: by default, every pattern is accepted. Overwrite it in a backend to reject patterns
+        whose parts (shape, mill and raster style) do not fit together, with an error which explains the problem. If
+        the pattern contains an arrangement, the method is called for each of its shapes, so `ptn` always has a single
+        shape.
+
+        Args:
+            ptn (Pattern): pattern to be checked.
+        """
+
     def process_pattern(self, ptn: Pattern) -> None:
         """Add a pattern to the backend. The method of the shape of the pattern is called.
 
@@ -153,8 +165,10 @@ class BackendBase:
             self._dispatch(ptn)
 
     def _dispatch(self, ptn: Pattern) -> None:
-        """Call the shape method for the shape of `ptn` (or of the nearest base class of the shape which is
+        """Validate `ptn` and call the shape method for its shape (or for the nearest base class of the shape which is
         supported)."""
+        self.validate_pattern(ptn)
+
         names = _shape_methods(type(self))
         for shape_class in type(ptn.dim_shape.shape).__mro__:
             name = names.get(shape_class)
