@@ -1,0 +1,11 @@
+# Opens pull requests for new versions of the GitHub actions (e.g. when an action moves to a new runtime).
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      actions:
+        patterns:
+          - '*'

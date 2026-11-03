@@ -30,7 +30,7 @@ To publish a new release, follow these steps in the root folder of fib-o-mat. ``
        This increases the version in ``pyproject.toml`` and ``src/fibomat/__init__.py``, renames the ``[Unreleased]`` heading in ``CHANGELOG.md`` to ``[[version]] - [current date]``, creates a commit and tags it with ``v[version]``.
     6. Add a new, empty ``## [Unreleased]`` heading above the new release at the top of ``CHANGELOG.md`` (``bump2version`` cannot insert it) and commit.
     7. Push the commits and the tag: ``git push && git push --tags``.
-    8. Build the packages (see "Building wheel packages" below) and upload them with ``twine upload target/wheels/*``.
+    8. Publish a release for the tag on GitHub. The workflow ``.github/workflows/release.yml`` builds the wheels for Linux, Windows and macOS (x86_64 and arm64) and the sdist, tests them and uploads them to PyPI (trusted publishing, the upload has to be approved in the environment ``pypi``). Starting the workflow manually only builds and tests.
     9. Activate the new version ``v[version]`` on `Read the Docs <https://readthedocs.org/projects/fib-o-mat/>`__ (if it is not activated automatically) and check that it appears in the version selector of the documentation.
 
 |:test_tube:| Building the docs

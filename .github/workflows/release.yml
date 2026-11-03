@@ -1,0 +1,150 @@
+# Builds the wheels and the sdist, tests the wheels and, for a published GitHub release, uploads everything to PyPI.
+#
+# The upload uses PyPI's trusted publishing (no password or token is stored in the repository): PyPI must know this
+# repository, this workflow file (release.yml) and the environment "pypi".
+#
+# A manual run (workflow_dispatch) only builds and tests, it never uploads.
+
+name: Release
+
+on:
+  workflow_dispatch:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  build_wheels:
+    name: Wheel ${{ matrix.platform }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {platform: linux-x86_64, os: ubuntu-24.04, target: x86_64}
+          - {platform: linux-aarch64, os: ubuntu-24.04-arm, target: aarch64}
+          - {platform: windows-x64, os: windows-2025, target: x64, python-arch: x64}
+          - {platform: windows-arm64, os: windows-11-arm, target: aarch64, python-arch: arm64}
+          # both macOS wheels are built on Apple silicon, the x86_64 wheel is cross compiled
+          - {platform: macos-x86_64, os: macos-15, target: x86_64}
+          - {platform: macos-aarch64, os: macos-15, target: aarch64}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      # on Windows, the extension is linked against the python library of an interpreter of the same architecture
+      - uses: actions/setup-python@v7
+        if: runner.os == 'Windows'
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.python-arch }}
+
+      # the extension uses the stable ABI (abi3-py38), hence one wheel per platform covers all python versions >= 3.8
+      - name: Build wheel
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist
+          manylinux: 2_28
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-${{ matrix.platform }}
+          path: dist/*.whl
+          if-no-files-found: error
+
+  build_sdist:
+    name: Sdist
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build sdist
+        uses: PyO3/maturin-action@v1
+        with:
+          command: sdist
+          args: --out dist
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: dist-sdist
+          path: dist/*.tar.gz
+          if-no-files-found: error
+
+  test_wheels:
+    name: Test wheel ${{ matrix.platform }} / Python ${{ matrix.python }}
+    needs: build_wheels
+    runs-on: ${{ matrix.os }}
+    # numpy, scipy etc. may not provide wheels for Windows arm64; a failure there does not block the release
+    continue-on-error: ${{ matrix.platform == 'windows-arm64' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Python 3.8 uses old versions of bokeh and marshmallow (plots without the measure tool)
+          - {platform: linux-x86_64, os: ubuntu-24.04, python: '3.8'}
+          - {platform: linux-x86_64, os: ubuntu-24.04, python: '3.14'}
+          - {platform: linux-aarch64, os: ubuntu-24.04-arm, python: '3.14'}
+          - {platform: windows-x64, os: windows-2025, python: '3.8'}
+          - {platform: windows-x64, os: windows-2025, python: '3.14'}
+          - {platform: windows-arm64, os: windows-11-arm, python: '3.14'}
+          - {platform: macos-aarch64, os: macos-15, python: '3.14'}
+          - {platform: macos-x86_64, os: macos-15-intel, python: '3.14'}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: dist-${{ matrix.platform }}
+          path: dist
+
+      - name: Install the wheel
+        shell: bash
+        run: python -m pip install --find-links dist --only-binary fibomat "fibomat[exporting,io,testing]"
+
+      # the tests import the installed package (the sources are in src/, which is not on the python path)
+      - name: Run the tests
+        run: python -m pytest tests -q
+
+  test_rust:
+    name: Rust tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --manifest-path rust/Cargo.toml
+
+  publish:
+    name: Upload to PyPI
+    if: github.event_name == 'release' && github.event.action == 'published'
+    needs: [build_wheels, build_sdist, test_wheels, test_rust]
+    runs-on: ubuntu-24.04
+    environment:
+      name: pypi
+      url: https://pypi.org/project/fibomat/
+    permissions:
+      id-token: write  # trusted publishing
+
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: dist-*
+          path: dist
+          merge-multiple: true
+
+      - name: Check that all wheels are there
+        shell: bash
+        run: |
+          ls -l dist
+          test "$(ls dist/*.whl | wc -l)" -eq 6
+          test "$(ls dist/*.tar.gz | wc -l)" -eq 1
+
+      - uses: pypa/gh-action-pypi-publish@release/v1

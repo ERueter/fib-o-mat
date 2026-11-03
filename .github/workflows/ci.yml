@@ -1,0 +1,75 @@
+# Tests on every push and pull request: the python tests (with the extension built from source), the rust tests and
+# the documentation.
+
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Python ${{ matrix.python }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # oldest supported version: old bokeh (plots without the measure tool) and old marshmallow
+          - {os: ubuntu-24.04, python: '3.8'}
+          # first version with bokeh >= 3.8
+          - {os: ubuntu-24.04, python: '3.10'}
+          - {os: ubuntu-24.04, python: '3.14'}
+          - {os: windows-2025, python: '3.14'}
+          - {os: macos-15, python: '3.14'}
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python }}
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      # builds the extension with maturin (needs the rust toolchain)
+      - name: Install
+        run: python -m pip install ".[exporting,io,testing]"
+
+      - name: Run the tests
+        run: python -m pytest tests -q
+
+  rust:
+    name: Rust tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo test --manifest-path rust/Cargo.toml
+
+  docs:
+    name: Documentation
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.14'
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install
+        run: python -m pip install ".[docs,exporting,io]"
+
+      # warnings are errors, so broken references are found before Read the Docs builds the docs
+      - name: Build
+        run: python -m sphinx -W --keep-going -b html docs build/sphinx/html

@@ -4,6 +4,13 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Changed
+- GitHub workflows: `release.yml` replaces `build_wheels.yml` and `build_wheel_and_pypi_upload.yml`. It builds wheels for Linux and Windows (x86_64 and arm64) and macOS (x86_64, cross compiled on Apple silicon, and arm64) on current runners, tests every wheel (Python 3.8 and 3.14) and uploads to PyPI with trusted publishing, only for published releases and only if all builds and tests pass. The retired runners `macos-13` and `macos-14` and the actions on Node 20 are replaced.
+
+### Added
+- Read the Docs fails the build on warnings (`fail_on_warning: true` in `.readthedocs.yml`), so broken documentation is not published.
+- GitHub workflow `ci.yml`: the python tests (Python 3.8, 3.10 and 3.14 on Linux; 3.14 on Windows and macOS), the rust tests and a documentation build (warnings are errors) on every push and pull request. Dependabot keeps the actions up to date.
+
 ## [0.8.0] - 2026-11-03
 
 ### Added
