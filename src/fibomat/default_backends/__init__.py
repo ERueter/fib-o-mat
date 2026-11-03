@@ -4,12 +4,16 @@
   ``exporting`` extra).
 * :class:`SpotListBackend` rasterizes all shapes and creates a list of dwell points.
 * :class:`PatterningDurationCalculator` estimates the patterning time.
+* :class:`SVGBackend` draws a layout as svg file; dwell times, repeats or doses can be encoded by a color map
+  (:class:`ColorBy`, needs matplotlib from the ``exporting`` extra).
 
 Backends are classes which are passed to :meth:`fibomat.layout.Layout.export`.
 """
 from fibomat.default_backends.stub_raster_style import StubRasterStyle
 from fibomat.default_backends.spotlist_backend import SpotListBackend
 from fibomat.default_backends.patterning_duration_calculator import PatterningDurationCalculator
+from fibomat.default_backends.color_by import ColorBy
+from fibomat.default_backends.svg_backend import SVGBackend
 
 try:
     from fibomat.default_backends.bokeh_backend import BokehBackend, BokehImage
@@ -38,4 +42,7 @@ except ModuleNotFoundError as _error:
                 f'(pip install fibomat[exporting]). Original error: {_MISSING}'
             )
 
-__all__ = ['BokehBackend', 'BokehImage', 'StubRasterStyle', 'SpotListBackend', 'PatterningDurationCalculator']
+__all__ = [
+    'BokehBackend', 'BokehImage', 'StubRasterStyle', 'SpotListBackend', 'PatterningDurationCalculator', 'SVGBackend',
+    'ColorBy',
+]
