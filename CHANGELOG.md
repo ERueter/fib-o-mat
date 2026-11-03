@@ -18,6 +18,7 @@ All notable changes to this project are documented in this file.
 - `NPVEMill(scan_direction=...)` and `NPVEMill.scan_direction` emit a `DeprecationWarning`. The step and repeat backend still exports the scan direction.
 
 ### Changed
+- **Breaking:** spots and lines with a dose need `spot_size` in `NPVESingleSite` and `NPVEStepAndRepeat`. NPVE converts their doses with the spot size of its active beam, and the old factors stood for a fixed 100 nm spot.
 - `NPVESingleSite` and `NPVEStepAndRepeat` write `LockSpacingDuDv` as `false` (was `true`); `LockSpacingDpDr` stays `true`. The files which are generated therefore differ in this value.
 - `NPVEMill` is derived from `DoseMill` (unchanged rules: a dwell time and either repeats or a dose).
 - **Breaking:** the lengths of `DimLattice.from_counts`, `DimLattice.from_rect` and `DimLatticeBuilder.rectangular` are annotated as `DimFloat[LengthDimension]` and checked with `check_units`: a value without a unit or with another dimension raises a `DimensionError` (a `TypeError`; before: `TypeError` for plain numbers and `ValueError` for other dimensions). Negative or zero lengths still raise `ValueError`.

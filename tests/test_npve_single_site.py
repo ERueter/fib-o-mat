@@ -173,9 +173,7 @@ class TestSingleSite:
         def export(backend):
             layout = Layout()
             layout.create_site(um(0, 0), um(4, 4)).create_pattern(shape * unit('µm'), repeats_mill(), style)
-            with warnings.catch_warnings():
-                warnings.simplefilter('ignore', UserWarning)  # spot dose
-                return shapes_of(parse(layout.export(backend)))[0]
+            return shapes_of(parse(layout.export(backend)))[0]
 
         single, step_and_repeat = export(NPVESingleSite), export(NPVEStepAndRepeat)
         for key in ('Class', 'Nodes', 'RotationCenter', 'Outline'):
@@ -337,9 +335,7 @@ class TestValidation:
         (Spot(), zero_d.SingleSpot(), 1. * unit('ions')),
     ])
     def test_fitting_doses_are_accepted(self, backend, shape, style, dose):
-        with warnings.catch_warnings():
-            warnings.simplefilter('ignore', UserWarning)  # spot dose
-            dose_layout(shape, dose, style).export(backend)
+        dose_layout(shape, dose, style).export(backend, spot_size=0.1 * unit('µm'))
 
     def test_error_names_the_pattern(self, backend):
         with pytest.raises(DimensionError, match="'my line'.*Curve.*dimension 1.*line dose.*ions/nm"):
@@ -365,6 +361,58 @@ class TestValidation:
         )
         with pytest.raises(DimensionError):
             backend().validate_pattern(pattern)
+
+
+SPOT_SIZE = 0.5 * unit('nm')
+
+
+def target_dose(backend, shape, style, dose, **kwargs):
+    shape_ = shapes_of(parse(dose_layout(shape, dose, style).export(backend, **kwargs)))[0]
+    return float(shape_['Mill']['TargetDose'])
+
+
+@pytest.mark.parametrize('backend', BACKENDS)
+class TestDoseConversion:
+    """NPVE holds all doses in nC/µm². The expected values were measured in NPVE with a spot size of 0.5 nm."""
+
+    def test_line(self, backend):
+        dose = target_dose(backend, Line((0, 0), (1, 1)), CURVE, 5e-4 * unit('nC / µm'), spot_size=SPOT_SIZE)
+        assert dose == pytest.approx(1.0)
+
+    def test_spot(self, backend):
+        dose = target_dose(backend, Spot(), zero_d.SingleSpot(), 1963.5 * unit('pA * µs'), spot_size=SPOT_SIZE)
+        assert dose == pytest.approx(10.0, abs=1e-4)
+
+    def test_spot_has_one_pass(self, backend):
+        layout = dose_layout(Spot(), 1963.5 * unit('pA * µs'), zero_d.SingleSpot())
+        mill = shapes_of(parse(layout.export(backend, spot_size=SPOT_SIZE)))[0]['Mill']
+        assert (mill['NumFrames'], mill['CustomEndpoint'], mill['TargetMode']) == ('1', 'true', '0')
+
+    @pytest.mark.parametrize('kwargs', [{}, {'spot_size': SPOT_SIZE}])
+    def test_area_does_not_need_the_spot_size(self, backend, kwargs):
+        assert target_dose(backend, Rect(1, 1), lines(), 5. * unit('nC / µm**2'), **kwargs) == pytest.approx(5.0)
+
+    @pytest.mark.parametrize('shape, style, dose', [
+        (Line((0, 0), (1, 1)), CURVE, 5e-4 * unit('nC / µm')),
+        (Spot(), zero_d.SingleSpot(), 1963.5 * unit('pA * µs')),
+    ])
+    def test_spot_and_line_with_dose_need_the_spot_size(self, backend, shape, style, dose):
+        with pytest.raises(ValueError, match='spot_size'):
+            dose_layout(shape, dose, style).export(backend)
+
+    @pytest.mark.parametrize('shape, style', [(Line((0, 0), (1, 1)), CURVE), (Spot(), zero_d.SingleSpot())])
+    def test_repeats_need_no_spot_size(self, backend, shape, style):
+        layout = Layout()
+        layout.create_site(um(0, 0), um(4, 4)).create_pattern(shape * unit('µm'), repeats_mill(3), style)
+        assert shapes_of(parse(layout.export(backend)))[0]['Mill']['NumFrames'] == '3'
+
+    def test_spot_size_must_be_positive(self, backend):
+        with pytest.raises(ValueError, match='spot_size must be positive'):
+            backend(spot_size=0. * unit('nm'))
+
+    def test_spot_size_must_be_a_length(self, backend):
+        with pytest.raises(DimensionError, match='spot_size'):
+            backend(spot_size=0.5)
 
 
 class TestStepAndRepeatDeflectionList:

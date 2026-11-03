@@ -82,7 +82,7 @@ def cases() -> t.Dict[str, t.Tuple[Layout, t.Dict[str, t.Any]]]:
 
     result['spot_dose'] = (single_site([
         (Spot((1.5, -0.5)) * unit('µm'), dose_mill('ions', 100000.), zero_d.SingleSpot()),
-    ]), {})
+    ]), {'spot_size': 0.1 * unit('µm')})
 
     result['curves'] = (single_site([
         (Line((0, 0), (3, 1)) * unit('µm'), repeats_mill(), curve()),
@@ -90,7 +90,7 @@ def cases() -> t.Dict[str, t.Tuple[Layout, t.Dict[str, t.Any]]]:
         (Rect(2, 1).translated((1, 1)) * unit('µm'), repeats_mill(), curve()),
         (Polygon([(0, 0), (1, 0), (1, 1)]) * unit('µm'), repeats_mill(1, 3.), curve(0.005)),
         (Line((0, 0), (3, 1)) * unit('µm'), dose_mill('nC/µm', 0.3), curve()),
-    ]), {})
+    ]), {'spot_size': 0.1 * unit('µm')})
 
     result['areas'] = (single_site([
         (Rect(2, 1).translated((1, 1)) * unit('µm'), repeats_mill(), lines()),

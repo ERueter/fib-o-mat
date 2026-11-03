@@ -138,14 +138,14 @@ class TestStructure:
 class TestBackend:
     def test_save(self, tmp_path):
         layout, _ = sar_corpus.cases()['curves']
-        backend = layout.export(NPVEStepAndRepeat)
+        backend = layout.export(NPVEStepAndRepeat, spot_size=0.1 * unit('µm'))
         backend.save(tmp_path / 'file.xml')
         assert (tmp_path / 'file.xml').read_text(encoding='iso-8859-1') == backend._to_str()  # pylint: disable=protected-access
         assert (tmp_path / 'file.xml').read_bytes().startswith(b'<?xml version="1.0" encoding="iso-8859-1"?>')
 
     def test_print(self, capsys):
         layout, _ = sar_corpus.cases()['curves']
-        backend = layout.export(NPVEStepAndRepeat)
+        backend = layout.export(NPVEStepAndRepeat, spot_size=0.1 * unit('µm'))
         backend.print()
         assert capsys.readouterr().out.strip() == backend._to_str().strip()  # pylint: disable=protected-access
 
@@ -181,15 +181,6 @@ class TestBackend:
         assert document['Options']['ShareShapes'] == 'true'
         assert len(document['SharedShapes']['FIBShape']) == 2
         assert all(site['Shapes'] is None for site in document['Sites']['Site'])
-
-    def test_spot_dose_warning_only_once(self):
-        layout = single_site([
-            (Spot((0, 0)) * unit('µm'), repeats_mill(), zero_d.SingleSpot()),
-            (Spot((1, 0)) * unit('µm'), repeats_mill(), zero_d.SingleSpot()),
-        ])
-        with pytest.warns(UserWarning, match='spot dose') as record:
-            layout.export(NPVEStepAndRepeat)
-        assert len([warning for warning in record if 'spot dose' in str(warning.message)]) == 1
 
     def test_rotated_ellipse(self):
         layout = single_site([(Ellipse(2, 1, 0.5) * unit('µm'), repeats_mill(), lines())])

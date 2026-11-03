@@ -1,7 +1,7 @@
 """Models of the shapes of the NPVE step and repeat files.
 
 The classes only hold the values which are written to the file; the file format is defined by the schemas in
-``common_schemas.py``. The numerical values (including the magic numbers) must not be changed, they define the files
+``common_schemas.py``. The numerical values must not be changed, they define the files
 which NPVE reads.
 """
 from __future__ import annotations
@@ -24,6 +24,17 @@ __all__ = ['FIBShape', 'ShapeTexture', 'encode_image']
 
 
 _MICRON = unit('µm')
+
+
+def _dose_in_npve(dose, raster_style, spot_size):
+    """NPVE holds every dose in nC/µm². It converts line and spot doses with the spot size of its active beam."""
+    if isinstance(raster_style, (zero_d.SingleSpot, one_d.Curve)) and spot_size is None:
+        raise ValueError('A spot or line with a dose needs the spot_size of the backend.')
+    if isinstance(raster_style, zero_d.SingleSpot):
+        return dose.m_as('nC') / (spot_size * spot_size * 3.1416 / 4)
+    if isinstance(raster_style, one_d.Curve):
+        return dose.m_as('nC/µm') / spot_size
+    return dose.m_as('nC / µm**2')
 
 
 class _Mill:
@@ -52,7 +63,7 @@ class _Mill:
 
             self.raster_style = 0
             self.angle = 0
-            self.operation_id = 999  # WTF
+            self.operation_id = 999  # What NPVE itself gives a spot (TFIBSpot.Create)
         elif isinstance(raster_style, one_d.Curve):
             if not raster_style.scan_sequence == ScanSequence.CONSECUTIVE:
                 raise ValueError('Curves must have the scan sequence ScanSequence.CONSECUTIVE.')
@@ -93,13 +104,21 @@ class _Mill:
         else:
             raise TypeError("Unsupported raster style.")
 
-    def __init__(self, mill: NPVEMill, raster_style: RasterStyle, is_deflection_list: bool = False):
+    def __init__(
+        self,
+        mill: NPVEMill,
+        raster_style: RasterStyle,
+        is_deflection_list: bool = False,
+        spot_size: t.Optional[float] = None,
+    ):
         """
         Args:
             mill (NPVEMill): mill
             raster_style (RasterStyle): raster style (SingleSpot, Curve or LineByLine; PreRasterized for deflection
                 lists)
             is_deflection_list (bool): True if the mill belongs to a deflection list
+            spot_size (float, optional): spot size of the beam in µm. NPVE converts the doses of spots and lines with
+                it, so spots and lines with a dose need it.
 
         Raises:
             TypeError: Raised if the mill is no NPVEMill or the raster style is not supported.
@@ -123,18 +142,11 @@ class _Mill:
             self.target_mode = 3
         else:
             self.target_mode = 0
+            self.target_dose = _dose_in_npve(mill["dose"], raster_style, spot_size)
             if isinstance(raster_style, zero_d.SingleSpot):
-                self.target_dose = (
-                    mill["dose"].m_as("ions") * 0.000815981757185301 / (4e4)
-                )
+                # NPVE gives a spot one pass, and sets the dwell time from the dose and the current.
                 self.num_frames = 1
                 self.custom_endpoint = True
-            elif isinstance(raster_style, one_d.Curve):
-                self.target_dose = (
-                    mill["dose"].m_as("nC/µm") * 10
-                )  # WTF why multiply by 10?!?!?
-            else:
-                self.target_dose = mill["dose"].m_as("nC / µm**2")
 
         self.dwell_time = mill["dwell_time"].m_as("µs")
 
@@ -221,6 +233,7 @@ class FIBShape:
         angle: t.Optional[float] = None,
         deflection_list: t.Optional[DeflectionList] = None,
         shape_name: t.Optional[str] = None,
+        spot_size: t.Optional[float] = None,
     ):
         """
         Args:
@@ -236,8 +249,9 @@ class FIBShape:
             angle (float, optional): angle of the shape. Default: the scan direction of the mill.
             deflection_list (DeflectionList, optional): points of a deflection list
             shape_name (str, optional): name of the shape. Default: `class_` without the leading "T".
+            spot_size (float, optional): spot size of the beam in µm, needed for spots and lines with a dose.
         """
-        self.mill = _Mill(mill, raster_style, deflection_list is not None)  # (checks the type of the mill)
+        self.mill = _Mill(mill, raster_style, deflection_list is not None, spot_size)  # (checks the type of the mill)
 
         self.class_ = class_
         self.display_id = id

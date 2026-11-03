@@ -387,7 +387,7 @@
 						<FullRefresh>10.0</FullRefresh>
 						<NumFrames>0</NumFrames>
 						<NumSteps>1</NumSteps>
-						<TargetDose>3.0</TargetDose>
+						<TargetDose>2.9999999999999996</TargetDose>
 						<TargetDepth>0.0</TargetDepth>
 						<TargetTime>0.0</TargetTime>
 						<TargetMode>0</TargetMode>

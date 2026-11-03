@@ -49,6 +49,7 @@ class NPVEStepAndRepeat(NPVEBackendBase):
         description: t.Optional[str] = None,
         approximation_error: t.Optional[DimFloat[LengthDimension]] = None,
         max_embedded_points: int = DEFAULT_MAX_EMBEDDED_POINTS,
+        spot_size: t.Optional[DimFloat[LengthDimension]] = None,
     ):
         """
         Args:
@@ -63,11 +64,17 @@ class NPVEStepAndRepeat(NPVEBackendBase):
             max_embedded_points (int): deflection lists with more points are written to separate binary files. Use 0
                 to write all lists to separate files.
 
+            spot_size (DimFloat, optional): spot size of the beam (as shown by NPVE for the beam which is used for
+                patterning). NPVE converts the doses of spots and lines with the spot size of its active beam, so spots
+                and lines with a dose need it; mills with repeats do not. For a spot with a dose, NPVE ignores the dwell
+                time of the mill and calculates it from the dose and the beam current.
+
         Raises:
-            DimensionError: Raised if approximation_error is no dimensioned value or has not the dimension [length].
-            ValueError: Raised if approximation_error is not positive or max_embedded_points is negative.
+            DimensionError: Raised if approximation_error or spot_size is no dimensioned value or has not the dimension
+                [length].
+            ValueError: Raised if approximation_error or spot_size is not positive or max_embedded_points is negative.
         """
-        super().__init__(description, approximation_error, max_embedded_points)
+        super().__init__(description, approximation_error, max_embedded_points, spot_size)
 
         self._share_patterns = bool(share_patterns)
         self._shared_patterns: t.Union[SaRSharedShapes, t.List[t.Any]] = []

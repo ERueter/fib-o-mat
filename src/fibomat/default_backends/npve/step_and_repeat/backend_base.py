@@ -15,7 +15,6 @@ from __future__ import annotations
 import abc
 import pathlib
 import typing as t
-import warnings
 
 import numpy as np
 
@@ -84,6 +83,7 @@ class NPVEBackendBase(BackendBase, abc.ABC):
         description: t.Optional[str] = None,
         approximation_error: t.Optional[DimFloat[LengthDimension]] = None,
         max_embedded_points: int = DEFAULT_MAX_EMBEDDED_POINTS,
+        spot_size: t.Optional[DimFloat[LengthDimension]] = None,
     ):
         """
         Args:
@@ -92,10 +92,15 @@ class NPVEBackendBase(BackendBase, abc.ABC):
                 their polygonal approximation, default ``0.0025 * unit('µm')``.
             max_embedded_points (int): deflection lists with more points are written to separate binary files. Use 0
                 to write all lists to separate files.
+            spot_size (DimFloat, optional): spot size of the beam (as shown by NPVE for the beam which is used for
+                patterning). NPVE converts the doses of spots and lines with the spot size of its active beam, so spots
+                and lines with a dose need it; mills with repeats do not. For a spot with a dose, NPVE ignores the dwell
+                time of the mill and calculates it from the dose and the beam current.
 
         Raises:
-            DimensionError: Raised if approximation_error is no dimensioned value or has not the dimension [length].
-            ValueError: Raised if approximation_error is not positive or max_embedded_points is negative.
+            DimensionError: Raised if approximation_error or spot_size is no dimensioned value or has not the dimension
+                [length].
+            ValueError: Raised if approximation_error or spot_size is not positive or max_embedded_points is negative.
         """
         super().__init__(description)
 
@@ -109,7 +114,10 @@ class NPVEBackendBase(BackendBase, abc.ABC):
             raise ValueError('max_embedded_points must not be negative.')
         self._max_embedded_points = max_embedded_points
 
-        self._warned_about_spot_dose = False
+        if spot_size is not None and not spot_size.magnitude > 0.:
+            raise ValueError('spot_size must be positive.')
+        self._spot_size = None if spot_size is None else spot_size.m_as('µm')
+
         self._shape_index = self._first_shape_id
         self._deflection_lists: t.List[DeflectionList] = []
 
@@ -230,7 +238,7 @@ class NPVEBackendBase(BackendBase, abc.ABC):
         self._store_shape(
             FIBShape(
                 class_=class_, id=self._shape_index, rotation_center=rotation_center, nodes=nodes, mill=ptn.mill,
-                raster_style=ptn.raster_style, **kwargs
+                raster_style=ptn.raster_style, spot_size=self._spot_size, **kwargs
             )
         )
         self._shape_index += 1
@@ -264,10 +272,6 @@ class NPVEBackendBase(BackendBase, abc.ABC):
         return Pattern(DimShape(shape, ptn.dim_shape.unit), ptn.mill, ptn.raster_style, **kwargs)
 
     def spot(self, ptn: Pattern[Spot]) -> None:
-        if not self._warned_about_spot_dose:
-            warnings.warn("Check the spot dose in NPVE as the calculation includes some magic numbers.", stacklevel=2)
-            self._warned_about_spot_dose = True
-
         scaled_spot = self._scaled(ptn)
         self._add_shape("TFIBSpot", scaled_spot.center, [(scaled_spot.center, _NODE_FIRST)], ptn)
 

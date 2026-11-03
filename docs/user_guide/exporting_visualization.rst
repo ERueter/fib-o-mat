@@ -185,6 +185,16 @@ Source: `https://github.com/fib-o-mat/fib-o-mat/blob/main/examples/exporting_adv
 NPVE shape files and step and repeat lists
 ++++++++++++++++++++++++++++++++++++++++++
 
+.. danger:: **The doses of spots and lines were wrong in fib-o-mat 0.7.1 and older.**
+
+    NPVE converts the doses of spots and lines with the spot size :math:`d` of its active beam. Up to version 0.7.1, fib-o-mat converted them for a fixed spot size of 100 nm, so NPVE applied
+
+    * to lines: :math:`\lambda_\text{NPVE} = \lambda_\text{script} \cdot \dfrac{d}{100\,\text{nm}}`
+    * to spots: :math:`Q_\text{NPVE} = Q_\text{script} \cdot \left(\dfrac{d}{100\,\text{nm}}\right)^2`
+
+    With a spot size of 0.5 nm, a line got 0.5 % and a spot 0.0025 % of the dose in the script. Area doses and patterns which are defined by the number of repeats are not affected. Files with spots or lines with a dose which were exported with these versions must be exported again.
+
+
 Two backends in :mod:`fibomat.default_backends.npve` write XML files for the NPVE patterning software:
 
     * :class:`~fibomat.default_backends.npve.NPVESingleSite` writes a shape file (``*.nps``) with the patterns of one site, relative to the center of the site. The file contains neither a stage position nor a field of view. A layout with several non-empty sites raises a ``ValueError``; use :meth:`~fibomat.layout.Layout.export_multi` to get one file per site.
@@ -204,6 +214,32 @@ Both backends support the same shapes and raster styles and need an ``NPVEMill``
 The header of a shape file can be set with the arguments ``system_name``, ``beam`` and ``aperture`` of :class:`~fibomat.default_backends.npve.NPVESingleSite`.
 
 Both backends validate the patterns on export: the dose of the mill must fit to the raster style, i.e. a spot dose (e.g. ``unit('ions')``) for spots, a line dose (e.g. ``unit('nC / µm')``) for curves and an area dose (e.g. ``unit('ions / nm**2')``) for areas. Otherwise, a :class:`~fibomat.units.DimensionError` is raised.
+
+Doses of spots and lines
+************************
+
+NPVE holds every dose as area dose (nC/µm², the value ``TargetDose`` in the file). It converts the doses of spots and lines with the spot size of its active beam. Therefore, both backends need the spot size of the beam which is used for patterning if the layout contains spots or lines with a dose (``spot_size``, as shown by NPVE). Mills with repeats and areas do not need it. ::
+
+    layout.export(NPVESingleSite, spot_size=0.5 * unit('nm'))
+
+With the spot size :math:`s` which is passed to the backend, a dose of the script is written as
+
+========  =========================  ===========================================  ===============================================
+Shape     Dose in the script         Written to the file (nC/µm²)                 Example (:math:`s` = 0.5 nm)
+========  =========================  ===========================================  ===============================================
+line      :math:`\lambda` (nC/µm)    :math:`\lambda / s`                          ``5e-4 * unit('nC / µm')`` → 1.0
+spot      :math:`Q` (nC, ions, ...)  :math:`Q / (\pi s^2 / 4)`                    ``1963.5 * unit('pA * µs')`` → 10.0
+area      :math:`\sigma` (nC/µm²)    :math:`\sigma`                               ``5 * unit('nC / µm**2')`` → 5.0
+========  =========================  ===========================================  ===============================================
+
+When the pattern runs, NPVE converts the value back with the spot size :math:`d` of its active beam. The dose which NPVE applies is therefore
+
+* for lines: :math:`\lambda_\text{NPVE} = \lambda \cdot d / s`
+* for spots: :math:`Q_\text{NPVE} = Q \cdot (d / s)^2`
+
+It is only the dose of the script if :math:`s = d`, i.e. if the file was exported with the spot size of the beam which is active in NPVE. If you change the aperture (or anything else which changes the spot size), export the file again.
+
+For a spot with a dose, NPVE uses one pass and calculates the dwell time from the dose and the beam current; the dwell time of the mill is ignored.
 
 Deflection lists
 ****************

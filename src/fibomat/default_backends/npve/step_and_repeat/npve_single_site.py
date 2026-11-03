@@ -85,6 +85,7 @@ class NPVESingleSite(NPVEBackendBase):
         system_name: str = 'WIN7ORION',
         beam: str = 'GFIS',
         aperture: str = '[1] He 20 µm (25.0kV|s=1.0)',
+        spot_size: t.Optional[DimFloat[LengthDimension]] = None,
     ):
         """
         Args:
@@ -97,11 +98,17 @@ class NPVESingleSite(NPVEBackendBase):
             beam (str): beam in the header of the file
             aperture (str): name of the active aperture in the header of the file
 
+            spot_size (DimFloat, optional): spot size of the beam (as shown by NPVE for the beam which is used for
+                patterning). NPVE converts the doses of spots and lines with the spot size of its active beam, so spots
+                and lines with a dose need it; mills with repeats do not. For a spot with a dose, NPVE ignores the dwell
+                time of the mill and calculates it from the dose and the beam current.
+
         Raises:
-            DimensionError: Raised if approximation_error is no dimensioned value or has not the dimension [length].
-            ValueError: Raised if approximation_error is not positive or max_embedded_points is negative.
+            DimensionError: Raised if approximation_error or spot_size is no dimensioned value or has not the dimension
+                [length].
+            ValueError: Raised if approximation_error or spot_size is not positive or max_embedded_points is negative.
         """
-        super().__init__(description, approximation_error, max_embedded_points)
+        super().__init__(description, approximation_error, max_embedded_points, spot_size)
 
         self._system_name = str(system_name)
         self._beam = str(beam)
