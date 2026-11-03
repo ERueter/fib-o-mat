@@ -8,6 +8,7 @@ import shutil
 import pytest
 
 from fibomat.default_backends import BokehBackend
+from fibomat.default_backends.measuretool import MEASURE_TOOL_AVAILABLE
 from fibomat.layout import Layout
 from fibomat.linalg import DimVector
 from fibomat.mill import Mill
@@ -87,6 +88,10 @@ def test_plot_is_self_contained(page):
     assert [url for url in page.requests if not url.startswith(('file:', 'data:', 'blob:'))] == []
 
 
+needs_measure_tool = pytest.mark.skipif(not MEASURE_TOOL_AVAILABLE, reason='the measure tool needs bokeh 3.8')
+
+
+@needs_measure_tool
 def test_measure_tool_measures_distance_and_angle(page):
     page.locator('[title="Measure"]').first.click()
 
@@ -99,6 +104,7 @@ def test_measure_tool_measures_distance_and_angle(page):
     assert texts[0].startswith('distance = ') and ' µm, angle = 45.00° (0.79 rad)' in texts[0]
 
 
+@needs_measure_tool
 def test_measure_tool_distance_is_in_plot_units(page):
     page.locator('[title="Measure"]').first.click()
 
@@ -120,6 +126,7 @@ def test_measure_tool_distance_is_in_plot_units(page):
     assert 'angle = 0.00°' in text
 
 
+@needs_measure_tool
 def test_a_click_removes_the_measurement(page):
     page.locator('[title="Measure"]').first.click()
     drag(page, (200, 300), (300, 200))

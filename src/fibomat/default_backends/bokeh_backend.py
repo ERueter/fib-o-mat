@@ -30,7 +30,7 @@ from fibomat.backend import BackendBase, shape_type
 from fibomat.default_backends._unit_helpers import to_length_unit
 from fibomat.default_backends._bokeh_site import BokehSite, ShapeType
 from fibomat.default_backends.bokeh_image import BokehImage
-from fibomat.default_backends.measuretool import MeasureTool
+from fibomat.default_backends import measuretool
 from fibomat.default_backends.stub_raster_style import StubRasterStyle
 from fibomat.layout.pattern import Pattern
 from fibomat.layout.site import Site
@@ -421,15 +421,19 @@ class BokehBackend(BackendBase):
 
         self._sorted_legend_items(fig)
 
-        # tool to measure distances and angles
-        measure_source = bm.ColumnDataSource(data=dict(x=[], y=[]))
-        measure_label = bm.Label(
-            x=bm.Node(target='frame', symbol='left', offset=5), y=bm.Node(target='frame', symbol='bottom', offset=-5),
-            anchor='bottom_left', text='', padding=10,
-        )
-        fig.add_tools(MeasureTool(source=measure_source, label=measure_label, measure_unit=f'{self._unit:~P}'))
-        fig.add_layout(measure_label)
-        fig.line('x', 'y', line_width=3, source=measure_source)
+        # tool to measure distances and angles (it needs bokeh 3.8, older versions plot without it)
+        if measuretool.MEASURE_TOOL_AVAILABLE:
+            measure_source = bm.ColumnDataSource(data=dict(x=[], y=[]))
+            measure_label = bm.Label(
+                x=bm.Node(target='frame', symbol='left', offset=5),
+                y=bm.Node(target='frame', symbol='bottom', offset=-5),
+                anchor='bottom_left', text='', padding=10,
+            )
+            fig.add_tools(
+                measuretool.MeasureTool(source=measure_source, label=measure_label, measure_unit=f'{self._unit:~P}')
+            )
+            fig.add_layout(measure_label)
+            fig.line('x', 'y', line_width=3, source=measure_source)
 
         self._fig = fig
         return fig

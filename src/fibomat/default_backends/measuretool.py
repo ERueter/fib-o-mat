@@ -13,22 +13,47 @@ Example::
     figure.add_tools(MeasureTool(source=source, label=label, measure_unit='µm'))
     figure.add_layout(label)
     figure.line('x', 'y', source=source)
+
+The tool is written for the API of bokeh 3.8. Older versions of bokeh, which are the only ones available for Python
+older than 3.10, cannot run it; see :data:`MEASURE_TOOL_AVAILABLE`.
 """
 import hashlib
 import pathlib
 import typing as t
 
+import bokeh
 from bokeh.core.properties import Instance, String
 from bokeh.models import ColumnDataSource, Label, Tool
 from bokeh.util.compiler import AttrDict, FromFile, get_cache_hook, set_cache_hook
 
 
-__all__ = ['MeasureTool']
+__all__ = ['MeasureTool', 'MEASURE_TOOL_AVAILABLE', 'supports_measure_tool']
 
 
 _HERE = pathlib.Path(__file__).resolve().parent
 _SOURCE = _HERE / 'measuretool.ts'
 _COMPILED = _HERE / 'measuretool.js'
+
+
+_MIN_BOKEH_VERSION = (3, 8)
+"""First version of bokeh (major, minor) with the API which is used by the tool."""
+
+
+def supports_measure_tool(bokeh_version: str) -> bool:
+    """Check if the measure tool runs with a version of bokeh.
+
+    Args:
+        bokeh_version (str): version, e.g. ``'3.8.2'``
+
+    Returns:
+        bool
+    """
+    major, minor = bokeh_version.split('.')[:2]
+    return (int(major), int(minor)) >= _MIN_BOKEH_VERSION
+
+
+MEASURE_TOOL_AVAILABLE: bool = supports_measure_tool(bokeh.__version__)
+"""True if the installed version of bokeh can run the measure tool. Otherwise, plots do not contain the tool."""
 
 
 def _compiled_code() -> t.Optional[str]:

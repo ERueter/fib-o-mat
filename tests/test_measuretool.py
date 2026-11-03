@@ -67,3 +67,11 @@ def test_old_names_are_gone():
     import fibomat.default_backends.bokeh_backend as backend_module
     assert not hasattr(backend_module, 'DrawTool')
     assert not hasattr(backend_module, '_ugly_patched_bundle_models')
+
+
+@pytest.mark.parametrize('version, supported', [
+    ('3.8.0', True), ('3.8.2', True), ('3.10.1', True), ('4.0.0', True), ('3.8.0.dev1', True), ('3.7.3', False),
+    ('3.4.3', False), ('3.1.1', False), ('2.4.3', False),
+])
+def test_supported_bokeh_versions(version, supported):
+    assert measuretool.supports_measure_tool(version) == supported

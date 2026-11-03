@@ -11,12 +11,16 @@ from fibomat.arrangements import DimLattice
 from fibomat.composite_shapes import HollowArcSpline, Ring
 from fibomat.default_backends import BokehBackend, BokehImage, StubRasterStyle
 from fibomat.default_backends._bokeh_site import NO_HATCH, ShapeType
+from fibomat.default_backends.measuretool import MEASURE_TOOL_AVAILABLE
 from fibomat.layout import Layout
 from fibomat.linalg import DimVector
 from fibomat.mill import Mill
 from fibomat.raster_styles import ScanSequence, one_d, two_d, zero_d
 from fibomat.shapes import ArcSpline, Circle, Line, Polygon, Rect, RasterizedPoints, Spot
 from fibomat.units import DimensionError, unit
+
+
+needs_measure_tool = pytest.mark.skipif(not MEASURE_TOOL_AVAILABLE, reason='the measure tool needs bokeh 3.8')
 
 
 def um(x, y):
@@ -372,9 +376,18 @@ class TestOutput:
     def test_tools(self):
         names = [type(tool).__name__ for tool in self.backend().fig.tools]
         assert names.count('HoverTool') >= 1
-        for expected in ('PanTool', 'WheelZoomTool', 'ResetTool', 'SaveTool', 'BoxZoomTool', 'MeasureTool'):
+        for expected in ('PanTool', 'WheelZoomTool', 'ResetTool', 'SaveTool', 'BoxZoomTool'):
             assert expected in names
+        assert ('MeasureTool' in names) == MEASURE_TOOL_AVAILABLE
 
+    def test_plot_without_measure_tool(self, monkeypatch):
+        # the case of old versions of bokeh
+        monkeypatch.setattr('fibomat.default_backends.measuretool.MEASURE_TOOL_AVAILABLE', False)
+        backend = self.backend()
+        assert 'MeasureTool' not in [type(tool).__name__ for tool in backend.fig.tools]
+        assert '<html' in backend.html()
+
+    @needs_measure_tool
     def test_measure_tool_configuration(self):
         tool = next(tool for tool in self.backend().fig.tools if type(tool).__name__ == 'MeasureTool')
         assert tool.measure_unit == 'µm'
@@ -403,7 +416,8 @@ class TestOutput:
         html = self.backend().html()
         assert '<script src=' not in html and '<link ' not in html
         assert 'cdn.bokeh.org' not in html
-        assert 'MeasureTool' in html and 'Bokeh' in html
+        assert 'Bokeh' in html
+        assert ('MeasureTool' in html) == MEASURE_TOOL_AVAILABLE
         assert len(html) > 500_000  # bokehjs is embedded
 
     def test_html_with_cdn_loads_bokeh_from_the_internet(self):
@@ -429,7 +443,7 @@ class TestOutput:
         assert len(opened) == 1 and opened[0].startswith('file://') and opened[0].endswith('.html')
         import pathlib
         from urllib.parse import unquote, urlparse
-        assert 'MeasureTool' in pathlib.Path(unquote(urlparse(opened[0]).path)).read_text(encoding='utf-8')
+        assert 'Bokeh' in pathlib.Path(unquote(urlparse(opened[0]).path)).read_text(encoding='utf-8')
 
     def test_layout_plot(self, tmp_path, monkeypatch):
         opened = []
