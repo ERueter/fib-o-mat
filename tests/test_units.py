@@ -295,3 +295,16 @@ class TestOperandRefusal:
             (1. * unit('um')) * Vector(1., 2.)
         with pytest.raises(TypeError):
             Vector(1., 2.) * (1. * unit('um'))
+
+
+@pytest.mark.parametrize('symbol', ['µm', 'μm', 'um', 'micrometer'])
+def test_micro_is_written_with_the_micro_sign(symbol):
+    # pint 0.26 writes the Greek mu (U+03BC) by default; fib-o-mat keeps the micro sign (U+00B5) for all versions
+    assert f'{ureg.Unit(symbol):~P}' == '\u00b5m'
+    assert f'{(2. * unit(symbol)).units:~P}' == '\u00b5m'
+    assert f'{ureg.Unit("micron"):~P}' == '\u00b5'
+
+
+def test_both_micro_characters_are_the_same_unit():
+    assert ureg.Unit('\u00b5m') == ureg.Unit('\u03bcm')
+    assert (1. * unit('\u03bcs')).m_as('\u00b5s') == 1.

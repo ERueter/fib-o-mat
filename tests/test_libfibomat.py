@@ -198,14 +198,14 @@ class TestIntersections:
     def test_curve_intersections_arcs(self):
         crossings, _ = lib.curve_intersections(circle(), line(-2, 0, 2, 0))
         points = sorted(p for _, _, p in crossings)
-        assert points == pytest.approx([(-1, 0), (1, 0)])
+        assert np.allclose(points, [(-1, 0), (1, 0)])
 
     def test_coincident(self):
         crossings, coincidences = lib.curve_intersections(line(0, 0, 2, 0), line(1, 0, 3, 0))
         assert crossings == []
         assert len(coincidences) == 1
         _, _, p1, p2 = coincidences[0]
-        assert sorted([p1, p2]) == pytest.approx([(1, 0), (2, 0)])
+        assert np.allclose(sorted([p1, p2]), [(1, 0), (2, 0)])
 
     def test_no_intersection(self):
         assert lib.curve_intersections(line(0, 0, 1, 0), line(0, 1, 1, 1)) == ([], [])

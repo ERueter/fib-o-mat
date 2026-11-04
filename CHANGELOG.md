@@ -4,6 +4,10 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Fixed
+- With pint 0.26 (Python >= 3.12), micro was written with the Greek letter `μ` instead of the micro sign `µ`, which changed file names (FEI), file headers (spot list) and labels. The registry of fib-o-mat writes `µ` with every version of pint; both characters are still accepted as input.
+- On Python 3.9 and 3.10, `splipy` 1.8.2 (the newest version for these Python versions) does not work with numpy 2: numpy is restricted to `< 2` there.
+
 ## [0.8.1] - 2026-11-03
 
 ### Changed

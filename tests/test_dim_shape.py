@@ -62,7 +62,9 @@ class TestConstruction:
         assert (nm * shape).shape is shape
 
     def test_repr(self):
-        assert repr(DimShape(Dot((1, 2)), 'µm')) == "DimShape(shape=Dot(Vector(x=1.0, y=2.0)), unit=<Unit('micrometer')>)"
+        # the repr of pint units depends on the version of pint
+        expected_unit = repr(ureg.Unit('µm'))
+        assert repr(DimShape(Dot((1, 2)), 'µm')) == f'DimShape(shape=Dot(Vector(x=1.0, y=2.0)), unit={expected_unit})'
 
 
 class TestProperties:
