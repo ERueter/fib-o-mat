@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## [Unreleased]
+## [0.8.2] - 2026-11-04
 
 ### Fixed
 - With pint 0.26 (Python >= 3.12), micro was written with the Greek letter `μ` instead of the micro sign `µ`, which changed file names (FEI), file headers (spot list) and labels. The registry of fib-o-mat writes `µ` with every version of pint; both characters are still accepted as input.
