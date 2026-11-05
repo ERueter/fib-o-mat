@@ -228,8 +228,18 @@ rounding_length_func4 = 2000#2000.0  # nm; radial length of the parabolic transi
 rounding_depth_reduction_func4 = 800.0
 rounding_adjustment = -1000  # controlled flattening of the parabola
 
+#r0_func4 = flatten_from * R_sil
+#depth0_func4 = R_sil - np.sqrt(R_sil**2 - r0_func4**2)
+
+depth_offset_func4 = 0#1000.0  # nm = 1 µm
+
 r0_func4 = flatten_from * R_sil
-depth0_func4 = R_sil - np.sqrt(R_sil**2 - r0_func4**2)
+depth0_func4 = (
+    R_sil
+    - np.sqrt(R_sil**2 - r0_func4**2)
+    + depth_offset_func4
+)
+
 tangent_slope_func4 = r0_func4 / np.sqrt(R_sil**2 - r0_func4**2)
 tangent_end_r_func4 = (
     r0_func4 + (R_sil - depth0_func4) / tangent_slope_func4
@@ -259,7 +269,11 @@ def _raw_profile_depth_func4(r: float) -> float:
     ) / (2 * rounding_length_func4)
 
     if r <= r0_func4:
-        return R_sil - np.sqrt(max(R_sil**2 - r**2, 0.0))
+        return (
+            R_sil
+            - np.sqrt(max(R_sil**2 - r**2, 0.0))
+            + depth_offset_func4
+        )#return R_sil - np.sqrt(max(R_sil**2 - r**2, 0.0))
 
     if r <= tangent_end_r_func4:
         return depth0_func4 + tangent_slope_func4 * (r - r0_func4)
@@ -282,110 +296,121 @@ def _raw_profile_depth_func4(r: float) -> float:
 
 ############################## TEST ##############################
 
-# ------------------------------------------------------------
-# Parameter
-# ------------------------------------------------------------
+if True:
+    # ------------------------------------------------------------
+    # Parameter
+    # ------------------------------------------------------------
 
-rounding_start_r = tangent_end_r_func4
-rounding_end_r = round_end_r_func4
+    rounding_start_r = tangent_end_r_func4
+    rounding_width = 3000
+    rounding_end_r = rounding_start_r+rounding_width #round_end_r_func4
 
-# Gewünschte Tiefe der horizontalen Verbindung
-flat_depth = 5500.0  # nm
+    # Gewünschte Tiefe der horizontalen Verbindung
+    flat_depth = 5500.0  # nm
 
-# Gauß-Glättung
-profile_blur_sigma = 500.0  # nm
-profile_grid_step = 10.0    # nm
+    # Gauß-Glättung
+    profile_blur_sigma = 500.0  # nm
+    profile_grid_step = 10.0    # nm
 
-
-# ------------------------------------------------------------
-# Rohprofil erzeugen
-# ------------------------------------------------------------
-
-def _raw_profile_depth_func4(r: float) -> float:
-
-    if r <= r0_func4:
-        return R_sil - np.sqrt(
-            max(R_sil**2 - r**2, 0.0)
-        )
-
-    if r <= tangent_end_r_func4:
-        return (
-            depth0_func4
-            + tangent_slope_func4 * (r - r0_func4)
-        )
-
-    if r <= rounding_start_r:
-        return (
-            R_sil
-            + tangent_slope_func4
-            * (r - tangent_end_r_func4)
-        )
-
-    if r <= rounding_end_r:
-        return flat_depth
-
-    if r <= profile_end_r_func4:
-        return (
-            flat_depth
-            + linear_slope_func4
-            * (r - rounding_end_r)
-        )
-
-    return 0.0
-
-
-# ------------------------------------------------------------
-# Profil diskret berechnen
-# ------------------------------------------------------------
-
-_profile_r = np.arange(
-    0.0,
-    profile_end_r_func4 + 2 * profile_grid_step,
-    profile_grid_step
-)
-
-_profile_depth_raw = np.array([
-    _raw_profile_depth_func4(r)
-    for r in _profile_r
-])
-
-
-# ------------------------------------------------------------
-# Gauß-Glättung
-# ------------------------------------------------------------
-
-_profile_depth_blurred = gaussian_filter1d(
-    _profile_depth_raw,
-    sigma=profile_blur_sigma / profile_grid_step,
-    mode="nearest"
-)
-
-
-# Kugel exakt erhalten
-sphere_mask = _profile_r <= r0_func4
-
-_profile_depth_blurred[sphere_mask] = (
-    _profile_depth_raw[sphere_mask]
-)
-
-
-# ------------------------------------------------------------
-# Finale Profilfunktion
-# ------------------------------------------------------------
-
-def _raw_profile_depth_func4(r: float) -> float:
-
-    if r <= r0_func4:
-        return R_sil - np.sqrt(
-            max(R_sil**2 - r**2, 0.0)
-        )
-
-    return np.interp(
-        r,
-        _profile_r,
-        _profile_depth_blurred,
-        right=0.0
+    # Ende des linearen 45°-Abschnitts: Tiefe fällt von flat_depth auf 0.
+    profile_end_r_func4 = (
+        rounding_end_r - flat_depth / linear_slope_func4
     )
+    profile_support_end_func4 = (
+        profile_end_r_func4 + 5 * profile_blur_sigma
+    )
+
+    # ------------------------------------------------------------
+    # Rohprofil erzeugen
+    # ------------------------------------------------------------
+
+    def _raw_profile_depth_func4(r: float) -> float:
+
+        if r <= r0_func4:
+            return R_sil - np.sqrt(
+                max(R_sil**2 - r**2, 0.0)
+            )
+
+        if r <= tangent_end_r_func4:
+            return (
+                depth0_func4
+                + tangent_slope_func4 * (r - r0_func4)
+            )
+
+        if r <= rounding_start_r:
+            return (
+                R_sil
+                + tangent_slope_func4
+                * (r - tangent_end_r_func4)
+            )
+
+        if r <= rounding_end_r:
+            return flat_depth
+
+        if r <= profile_end_r_func4:
+            return (
+                flat_depth
+                + linear_slope_func4
+                * (r - rounding_end_r)
+            )
+
+        return 0.0
+
+    print("profile end:"+ str(profile_end_r_func4))
+
+    # ------------------------------------------------------------
+    # Profil diskret berechnen
+    # ------------------------------------------------------------
+
+    _profile_r = np.arange(
+        0.0,
+        profile_support_end_func4 + 2 * profile_grid_step,
+        profile_grid_step
+    )
+
+    _profile_depth_raw = np.array([
+        _raw_profile_depth_func4(r)
+        for r in _profile_r
+    ])
+
+
+    # ------------------------------------------------------------
+    # Gauß-Glättung
+    # ------------------------------------------------------------
+
+    _profile_depth_blurred = gaussian_filter1d(
+        _profile_depth_raw,
+        sigma=profile_blur_sigma / profile_grid_step,
+        mode="constant"#"nearest"
+    )
+
+
+    # Kugel exakt erhalten
+    sphere_mask = _profile_r <= r0_func4
+
+    _profile_depth_blurred[sphere_mask] = (
+        _profile_depth_raw[sphere_mask]
+    )
+
+
+    # ------------------------------------------------------------
+    # Finale Profilfunktion
+    # ------------------------------------------------------------
+
+    def _raw_profile_depth_func4(r: float) -> float:
+
+        if r <= r0_func4:
+            return R_sil - np.sqrt(
+                max(R_sil**2 - r**2, 0.0)
+            )
+
+        return np.interp(
+            r,
+            _profile_r,
+            _profile_depth_blurred,
+            right=0.0
+        )
+
 
 ########################## end of test #######################################
 def dwell_func(point: np.ndarray) -> QuantityType:
@@ -393,7 +418,7 @@ def dwell_func(point: np.ndarray) -> QuantityType:
     r = np.sqrt(x * x + y * y)
 
     if r >= profile_end_r_func4:
-        return Q_(min_dwell_time, "microsecond")
+        pass#return Q_(min_dwell_time, "microsecond")
 
     depth = _raw_profile_depth_func4(r)
 
@@ -424,7 +449,7 @@ plt.plot(x_values / 1000, depth_values / 1000)
 hemisphere_x_nm = np.linspace(-radius_sil, radius_sil, 1001)
 hemisphere_depth_nm = radius_sil - np.sqrt(
     np.maximum(radius_sil**2 - hemisphere_x_nm**2, 0.0)
-)
+)    +depth_offset_func4
 plt.plot(
     hemisphere_x_nm / 1000,
     hemisphere_depth_nm / 1000,
@@ -454,10 +479,10 @@ spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * 
 
 #a, repeats_for_depth = calibrate.calibrate(rasterstyle=spiral_style)
 
-circ = shapes.Circle(r=13583, center=(0,0))
+circ = shapes.Circle(r=14.9, center=(0,0))#(r=14.9, center=(0,0))
 
 
-target_depth = 4.18*U_("µm")#6*U_('µm') # µm
+target_depth = 5*U_("µm")#6*U_('µm') # µm
 
 
 #repeats = repeats_for_depth(target_depth)
@@ -481,7 +506,7 @@ Z_target, dx = vas.get_target_from_mill(
 max_Z = np.max(Z_target)
 
 target_depth = (
-    max_Z
+    (max_Z-min_dwell_time)
     * R_sil
     / (1000 * (max_dwell_time - min_dwell_time))
 ) * U_("µm")
@@ -529,7 +554,7 @@ if True:
     hemisphere_r_nm = np.abs(hemisphere_x_nm)
     hemisphere_depth_nm = R_sil - np.sqrt(
         np.maximum(R_sil**2 - hemisphere_r_nm**2, 0.0)
-    )
+    )  + depth_offset_func4
     hemisphere_x_um = hemisphere_x_nm / 1000
     hemisphere_depth_um = hemisphere_depth_nm / 1000
 
@@ -620,7 +645,7 @@ vas.plot_surface_history(surface_history, Z_blurred, config)
 vas.evaluate_accuracy(Z_blurred, Z_final, dwell_maps, config)
 
 # save in current directory with filename simulation_results_sine
-np.savez("smoothed-sil-flatten_from-0-8.npz",
+np.savez("flatten-from-0-9-tangent-max-dwell-40.npz",
          Z_final=Z_final,
          dwell_maps=dwell_maps,
          Z_target=Z_blurred)
