@@ -45,7 +45,7 @@ from fibomat.rasterizedpattern import RasterizedPattern
 # Settings (defaults = values of test-matrixmill.py)
 # ----------------------------------------------------------------------------
 NPZ_PATH = "/home/emma/Documents/FBI/fibomat-v.0.6/flatten-from-0-9-tangent-max-dwell-40-first-5-slices-halved-500nm-graben.npz"
-FILE_PREFIX = "max40-500nm-graben-first-5-slices-halved-diffused"  # no '.' allowed (FEI backend cuts at the first '.')
+FILE_PREFIX = "max40-500nm-graben-first-5-slices-halved-diffused-centrefix"  # no '.' allowed (FEI backend cuts at the first '.')
 
 FOV_UM = 30.0                 # field of view of the vasile grid (n * dx)
 PATTERN_RADIUS_NM = 11500     # radius of the milled circle
@@ -162,6 +162,16 @@ def main():
     path_um = spiral_path_um(PATTERN_RADIUS_NM, POINT_PITCH_NM, SPIRAL_PITCH_NM, DIRECTION)
     print(f"{len(path_um)} visits per pass, {n}x{n} map, dx = {dx_um*1e3:.0f} nm, area factor {area_factor:.3f}")
 
+    # Area each spiral spot stands for. Spiral uses r = sqrt(2 a s) (s = arc length), so the area
+    # inside radius r is pi r^2 = spiral_pitch * s: a spot at s_k = k*pitch covers the arc-length
+    # cell [s_k - pitch/2, s_k + pitch/2] = pitch*spiral_pitch, EXCEPT the very first spot (s = 0,
+    # exactly at the centre), whose cell is only [0, pitch/2] -> half the area. Giving it a full
+    # dwell put half a spot too much dose on the apex (~5 nm dip after 24 slices in simulation).
+    spot_weight = np.ones(len(path_um))
+    centre = np.hypot(path_um[:, 0], path_um[:, 1]) < 1e-6 * POINT_PITCH_NM
+    spot_weight[centre] = 0.5
+    print(f"centre spot visits per pass with half weight: {int(centre.sum())}")
+
     out_dir = Path(args.out_dir).expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -177,7 +187,7 @@ def main():
         total_us = dwell_map.reshape(n, n) * 1e6 * area_factor    # wanted dwell per spot per slice [µs]
         n_rep = max(int(math.ceil(total_us.max() / (visits_per_pass * args.max_visit_us))), 1)
         per_visit_map = total_us / (visits_per_pass * n_rep)
-        target = sample_map(per_visit_map, path_um, dx_um)       # wanted dwell per visit [µs], path order
+        target = sample_map(per_visit_map, path_um, dx_um) * spot_weight   # wanted dwell per visit [µs], path order
 
         if args.no_diffusion:
             dwell = np.round(target / TIME_QUANTUM_US) * TIME_QUANTUM_US
