@@ -439,6 +439,19 @@ def compute_slice_target(Z_target, Z_current, dz, slice_idx, num_slices, slice_m
     raise ValueError(f"Unknown slice_mode: {slice_mode}")
 
 
+def _get_num_slices(max_depth, dz, initial_slice_count, initial_slice_depth_factor):
+    if initial_slice_count == 0:
+        return int(np.ceil(max_depth / dz))
+
+    initial_slice_depth = dz * initial_slice_depth_factor
+    initial_slices = min(
+        initial_slice_count,
+        int(np.ceil(max_depth / initial_slice_depth)),
+    )
+    remaining_depth = max(0, max_depth - initial_slices * initial_slice_depth)
+    return initial_slices + int(np.ceil(remaining_depth / dz))
+
+
 def estimate_lipschitz(C_dot, CT_dot, N, n_iter=30):
 
     x = np.random.randn(N)
@@ -508,13 +521,39 @@ def fista_projected(
     return x
 
 
-def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbose=False, plot_every=10, slice_mode="residual", record_surface_history=False, total_passes=None):
+def process_full_target(
+    Z_target,
+    dz,
+    config: ProcessConfig,
+    postprocess,
+    verbose=False,
+    plot_every=10,
+    slice_mode="residual",
+    record_surface_history=False,
+    total_passes=None,
+    initial_slice_count: int = 5,
+    initial_slice_depth_factor: float = 0.5,
+):
+    """Simulate milling in slices, optionally using shallower initial slices.
+
+    ``initial_slice_count`` slices are capped at
+    ``dz * initial_slice_depth_factor`` before regular ``dz`` slices are used.
+    """
+    if not isinstance(initial_slice_count, int) or initial_slice_count < 0:
+        raise ValueError("initial_slice_count must be a non-negative integer")
+    if not np.isfinite(initial_slice_depth_factor) or initial_slice_depth_factor <= 0:
+        raise ValueError("initial_slice_depth_factor must be a finite positive number")
     
     n = config.n
     Z_current = np.zeros_like(Z_target, dtype=float)
     dwell_maps = []
     surface_history = []
-    num_slices = int(np.ceil(Z_target.max() / dz))
+    num_slices = _get_num_slices(
+        Z_target.max(),
+        dz,
+        initial_slice_count,
+        initial_slice_depth_factor,
+    )
 
     if total_passes is not None:
         passes_per_slice = total_passes // num_slices
@@ -524,6 +563,11 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
 
     if verbose:
         print(f"Starting Slice-Simulation: {num_slices} Slices à {dz*1e9:.1f} nm")
+        if initial_slice_count:
+            print(
+                f"First {min(initial_slice_count, num_slices)} slices capped at "
+                f"{dz * initial_slice_depth_factor * 1e9:.1f} nm"
+            )
 
     for s in range(num_slices):
         repeat_count = 1
@@ -535,7 +579,19 @@ def process_full_target(Z_target, dz, config: ProcessConfig, postprocess, verbos
                 break
 
         # targeted slice depth
-        D_slice = compute_slice_target(Z_target, Z_current, dz, s, num_slices, slice_mode=slice_mode)
+        slice_depth_limit = (
+            dz * initial_slice_depth_factor
+            if s < initial_slice_count
+            else dz
+        )
+        D_slice = compute_slice_target(
+            Z_target,
+            Z_current,
+            slice_depth_limit,
+            s,
+            num_slices,
+            slice_mode=slice_mode,
+        )
         if np.all(D_slice == 0):
             if verbose: print("Target profile reached.")
             break
@@ -1068,4 +1124,3 @@ def get_target_from_mill(
         print(Z)
 
     return Z, dx
-

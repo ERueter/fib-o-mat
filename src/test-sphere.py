@@ -31,13 +31,13 @@ max_dwell_time = 10
 flatten_from = 0.9
 
 
-def dwell_func(point: np.ndarray) -> QuantityType:
+def dwell_func_sil_shift(point: np.ndarray) -> QuantityType:
     x, y = point[0], point[1]
     dist_sq = x * x + y * y
     dist = np.sqrt(dist_sq)
 
     # Shift apex downward by 10% of SIL radius
-    z_shift = 500 # 50 nm
+    z_shift = 125 # 50 nm
 
     if dist < radius_sil:
         # Original spherical cap term, shifted downward
@@ -231,7 +231,7 @@ rounding_adjustment = -1000  # controlled flattening of the parabola
 #r0_func4 = flatten_from * R_sil
 #depth0_func4 = R_sil - np.sqrt(R_sil**2 - r0_func4**2)
 
-depth_offset_func4 = 0#1000.0  # nm = 1 µm
+depth_offset_func4 = 125.0  # nm = 1 µm
 
 r0_func4 = flatten_from * R_sil
 depth0_func4 = (
@@ -272,7 +272,6 @@ def _raw_profile_depth_func4(r: float) -> float:
         return (
             R_sil
             - np.sqrt(max(R_sil**2 - r**2, 0.0))
-            + depth_offset_func4
         )#return R_sil - np.sqrt(max(R_sil**2 - r**2, 0.0))
 
     if r <= tangent_end_r_func4:
@@ -302,11 +301,11 @@ if True:
     # ------------------------------------------------------------
 
     rounding_start_r = tangent_end_r_func4
-    rounding_width = 3000
+    rounding_width = 500#3000
     rounding_end_r = rounding_start_r+rounding_width #round_end_r_func4
 
     # Gewünschte Tiefe der horizontalen Verbindung
-    flat_depth = 5500.0  # nm
+    flat_depth = 5550.0  # nm
 
     # Gauß-Glättung
     profile_blur_sigma = 500.0  # nm
@@ -329,7 +328,7 @@ if True:
         if r <= r0_func4:
             return R_sil - np.sqrt(
                 max(R_sil**2 - r**2, 0.0)
-            )
+            )+depth_offset_func4
 
         if r <= tangent_end_r_func4:
             return (
@@ -402,14 +401,30 @@ if True:
         if r <= r0_func4:
             return R_sil - np.sqrt(
                 max(R_sil**2 - r**2, 0.0)
-            )
+            ) + depth_offset_func4
 
-        return np.interp(
+        raw_depth = np.interp(
+            r,
+            _profile_r,
+            _profile_depth_raw,
+            right=0.0
+        )
+        blurred_depth = np.interp(
             r,
             _profile_r,
             _profile_depth_blurred,
             right=0.0
         )
+        blend_width = min(
+            3 * profile_blur_sigma,
+            tangent_end_r_func4 - r0_func4
+        )
+        blend_t = min(
+            (r - r0_func4) / blend_width,
+            1.0
+        )
+        blend = 6 * blend_t**5 - 15 * blend_t**4 + 10 * blend_t**3
+        return (1 - blend) * raw_depth + blend * blurred_depth
 
 
 ########################## end of test #######################################
@@ -473,7 +488,7 @@ plt.show()
 
 mill = DDDMill(dwell_func, 1)
 
-#mill = silmill
+#mill = DDDMill(dwell_func_sil_shift,1)
 
 spiral_style = raster_styles.two_d.Spiral(pitch=20 * U_('nm'),spiral_pitch=20 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
@@ -629,7 +644,7 @@ plt.tight_layout()
 plt.show()
 #print(f"Z_target skaliert mit Faktor {scale:.4f}, max Z_target: {np.max(Z_target):.2f} µs")
 
-dz = 250e-9 #7500 nm / 20 slices = 375e-9 250e-9 # 7500 nm /30 slices = 250 nm per slice #0.5e-7  # tiefe pro Slice in m, 
+dz = 200e-9#250e-9 #7500 nm / 20 slices = 375e-9 250e-9 # 7500 nm /30 slices = 250 nm per slice #0.5e-7  # tiefe pro Slice in m, 
 Z_blurred = vas.preprocess_Z(Z_target, config, verbose = False)
 Z_final, dwell_maps, surface_history = vas.process_full_target(
     Z_target=Z_blurred,
@@ -645,10 +660,12 @@ vas.plot_surface_history(surface_history, Z_blurred, config)
 vas.evaluate_accuracy(Z_blurred, Z_final, dwell_maps, config)
 
 # save in current directory with filename simulation_results_sine
-np.savez("flatten-from-0-9-tangent-max-dwell-40.npz",
+np.savez("flatten-from-0-9-tangent-max-dwell-40-25p-mehr-slices-dz200nm-500nm-graben.npz",
          Z_final=Z_final,
          dwell_maps=dwell_maps,
-         Z_target=Z_blurred)
+         Z_target=Z_blurred,
+         surface_history=surface_history,
+         surface_x_um=(np.arange(config.n) - config.n // 2) * config.dx * 1e6)
 
 exit()
 

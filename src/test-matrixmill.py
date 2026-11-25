@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 s = Sample()
 spiral_style = raster_styles.two_d.Spiral(pitch=100 * U_('nm'),spiral_pitch=100 * U_('nm'), scan_sequence=raster_styles.ScanSequence.CONSECUTIVE, direction="out-in")
 
-data = np.load(r"C:\Users\erue\Documents\fibomat\smoothed-sil-flatten_from-0-8.npz")
+data = np.load(r"/home/emma/Documents/FBI/fibomat-v.0.6/flatten-from-0-9-tangent-max-dwell-40-first-5-slices-halved-500nm-graben.npz")
 dwell_maps = data["dwell_maps"]
 
 
@@ -26,11 +26,11 @@ for i in range(0,len(dwell_maps)):
         # TODO über max = 10 µs nachdenken: je mehr passes wir machen müssen, desto öfter millen wir die minimalen 100 ns rein.
         # TODO nochmal über Parameter aus Vasile sprechen: Aktuell wird an tiefster Stelle 0,17 s gemillt, was mit Vasile Parametern
         # genau hinkommt, aber deutlich mehr ist als die 1000*100 ns aus Wentaos Code
-        scale = 10e-6 / max_d  # scale to max 10 µs
+        scale = 1e-6 / max_d  # scale to max 10 µs
         dwell_map_scaled = dwell_map * scale
         n = int(np.sqrt(dwell_map_scaled.size))
         dwell_map_scaled = dwell_map_scaled.reshape((n, n))
-        n_rep = int(np.ceil(max_d / 10e-6))
+        n_rep = int(np.ceil(max_d / 1e-6))
         
         """
         # Plot original and scaled dwell maps
@@ -85,7 +85,7 @@ for i in range(0,len(dwell_maps)):
         dim_position=(0, 0) * U_('µm'), dim_fov=(30, 30) * U_('µm')
     )
 
-    circ = shapes.Circle(r=13583, center=(0,0))  # warum auch immer es crasht, wenn derselbe Kreis mehrfach benutzt wird???
+    circ = shapes.Circle(r=11500, center=(0,0))  # warum auch immer es crasht, wenn derselbe Kreis mehrfach benutzt wird???
     
     layer_site.create_pattern(
         dim_shape=circ * U_('nm'),
@@ -97,7 +97,7 @@ for i in range(0,len(dwell_maps)):
     #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     # plot von erster map sieht normal aus, das zweite ist nur ein Punkt!!!
     exported = s.export(FEIStreamFile, n_rep=n_rep, margin=0.76) 
-    exported.save(f'smoothed-sil-flatten_from-0-9-gauß-tangent-{i}.str')
+    exported.save(f'max40-3um-graben-first-5-slices-halved-{i}.str')
     #s.plot(rasterize_pitch=Q_('0.01 µm'), plot_rasterized=True)
     print(f"Layer {i}: max dwell {max_d:.2f} µs, scale {scale:.4f}, n_rep {n_rep}")
     s.empty_sites()
